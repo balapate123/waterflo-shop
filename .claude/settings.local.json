@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(cd \"C:/Users/atbha/Projects/AntiGravity Projects/waterflo\" && mkdir -p server/db server/routes server/middleware)",
+      "Bash(cd \"C:/Users/atbha/Projects/AntiGravity Projects/waterflo\" && npm install 2>&1)",
+      "Bash(cd \"C:/Users/atbha/Projects/AntiGravity Projects/waterflo\" && npm run seed 2>&1)",
+      "Bash(cd \"C:/Users/atbha/Projects/AntiGravity Projects/waterflo\" && node -e \"\nconst fs = require\\('fs'\\);\nconst vm = require\\('vm'\\);\nconst code = fs.readFileSync\\('js/brand-config.js', 'utf8'\\);\nconst ctx = { BRANDS: null, URLSearchParams: class { constructor\\(\\) {} get\\(\\) { return null; } }, window: { location: { search: '' } }, console: console };\nvm.createContext\\(ctx\\);\nvm.runInContext\\(code, ctx\\);\nconsole.log\\('BRANDS:', ctx.BRANDS ? ctx.BRANDS.length : 'null'\\);\n\" 2>&1)",
+      "Bash(sleep 3 && curl -s http://localhost:3000/login.html | head -5)",
+      "Bash(pkill -f \"node server/index.js\" 2>/dev/null; echo \"done\")",
+      "Bash(sleep 2 && curl -s -X POST http://localhost:3000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@waterflo.in\",\"password\":\"admin123\"}' -c /tmp/wf_cookies && echo \"\" && curl -s http://localhost:3000/api/admin/dashboard -b /tmp/wf_cookies | node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('Dashboard:', j.totalProducts, 'products,', j.totalUsers, 'users,', j.brandStats.length, 'brands'\\)}\\)\")"
+    ]
+  }
+}

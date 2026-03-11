@@ -1,0 +1,405 @@
+/* ─── ADMIN DASHBOARD STYLES ─────────────────────────────────────────────── */
+
+.admin-page {
+  background: #f0f2f5;
+  min-height: 100vh;
+}
+
+.admin-header .logo-sub {
+  color: #f9a825;
+  font-weight: 700;
+}
+
+/* ─── TAB NAV ────────────────────────────────────────────────────────────── */
+.admin-tabs {
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: 60px;
+  z-index: 90;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+
+.admin-tab {
+  padding: 14px 20px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #546e7a;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  position: relative;
+}
+.admin-tab:hover { color: #1a237e; background: #f5f7ff; }
+.admin-tab.active {
+  color: #1a237e;
+  border-bottom-color: #1a237e;
+  font-weight: 700;
+}
+
+.tab-badge {
+  background: #c62828;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ─── CONTENT ────────────────────────────────────────────────────────────── */
+.admin-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── STAT CARDS ──────────────────────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media (min-width: 600px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.stat-label {
+  font-size: 0.75rem;
+  color: #546e7a;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* ─── ADMIN ROW (side by side cards) ──────────────────────────────────────── */
+.admin-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 768px) { .admin-row { grid-template-columns: 1fr 2fr; } }
+
+.admin-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.admin-card h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1a237e;
+}
+
+/* ─── BRAND STATS ─────────────────────────────────────────────────────────── */
+.brand-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.82rem;
+}
+.brand-stat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.brand-stat-name {
+  flex: 1;
+  font-weight: 600;
+}
+.brand-stat-val {
+  font-size: 0.72rem;
+  color: #546e7a;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* ─── PANEL TOOLBAR ───────────────────────────────────────────────────────── */
+.panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.panel-toolbar h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a237e;
+}
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.toolbar-actions select,
+.toolbar-search {
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  background: white;
+  outline: none;
+}
+.toolbar-search {
+  min-width: 140px;
+}
+.toolbar-actions select:focus,
+.toolbar-search:focus { border-color: #1a237e; }
+
+/* ─── ADMIN BUTTONS ───────────────────────────────────────────────────────── */
+.btn-admin-primary {
+  background: #1a237e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-admin-primary:hover { background: #0d1557; }
+
+.btn-admin-secondary {
+  background: white;
+  color: #1a237e;
+  border: 1.5px solid #1a237e;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-admin-secondary:hover { background: #e8eaf6; }
+
+/* ─── TABLES ──────────────────────────────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.admin-table th {
+  background: #f5f7ff;
+  color: #1a237e;
+  padding: 10px 8px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.admin-table tbody tr:hover { background: #f5f7ff; }
+.admin-table.compact { font-size: 0.78rem; }
+.admin-table.compact th { padding: 6px; }
+.admin-table.compact td { padding: 5px 6px; }
+
+.code-cell { font-family: monospace; font-size: 0.75rem; }
+.email-cell { font-size: 0.75rem; color: #546e7a; }
+.brands-cell { max-width: 200px; }
+.actions-cell { white-space: nowrap; }
+
+.inactive-row { opacity: 0.5; }
+
+.empty-text {
+  text-align: center;
+  color: #546e7a;
+  padding: 24px !important;
+  font-style: italic;
+}
+
+.table-footer {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: #546e7a;
+  text-align: right;
+}
+
+/* ─── STATUS BADGE ────────────────────────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 50px;
+  text-transform: capitalize;
+}
+
+.status-select {
+  border: 1.5px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ─── SMALL BUTTONS ───────────────────────────────────────────────────────── */
+.btn-sm {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+}
+.btn-approve { background: #4caf50; }
+.btn-approve:hover { background: #388e3c; }
+.btn-suspend { background: #f44336; }
+.btn-suspend:hover { background: #d32f2f; }
+.btn-edit { background: #1565c0; }
+.btn-edit:hover { background: #0d47a1; }
+
+/* ─── MINI TAG ────────────────────────────────────────────────────────────── */
+.mini-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #e8eaf6;
+  color: #1a237e;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: 1px;
+  white-space: nowrap;
+}
+
+/* ─── CHECKBOX ROW ────────────────────────────────────────────────────────── */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.checkbox-row input { cursor: pointer; }
+
+/* ─── FORM ROW ────────────────────────────────────────────────────────────── */
+.form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.form-row .form-group { flex: 1; min-width: 120px; }
+
+/* ─── ORDER INFO GRID ─────────────────────────────────────────────────────── */
+.order-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 0.85rem;
+  padding: 12px;
+  background: #f5f7ff;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+/* ─── ORDER DETAIL INVOICE VIEW ────────────────────────────────────────────── */
+.inv-header-admin {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 3px solid #1a237e;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.inv-brand-admin {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #1a237e;
+}
+.inv-brand-admin span { color: #f9a825; }
+
+.inv-dealer-admin {
+  background: #f5f7ff;
+  border-left: 3px solid #1a237e;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* ─── USER ORDER CARDS ─────────────────────────────────────────────────────── */
+.user-order-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.user-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f5f7ff;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.85rem;
+}
+.user-order-card .admin-table { margin: 0; }
+.user-order-card .admin-table th { font-size: 0.68rem; }
+
+/* Clickable user rows */
+#usersTable tbody tr { transition: background 0.15s; }
+#usersTable tbody tr:hover { background: #e8eaf6; }
+
+/* ─── RESPONSIVE ──────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .admin-content { padding: 10px; }
+  .panel-toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar-actions { flex-direction: column; }
+  .toolbar-actions select,
+  .toolbar-search { width: 100%; }
+}

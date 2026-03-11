@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#1a237e">
+  <title>Waterflo - Distributor Order Portal</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body class="landing-page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo-wrap">
+      <div>
+        <div class="logo-text">Water<span>flo</span>&reg;</div>
+        <span class="logo-sub">Distributor Order Portal</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="user-info" id="userInfo"></span>
+      <a href="/admin.html" class="cart-btn" id="adminLink" style="display:none;text-decoration:none;color:white" title="Admin Dashboard">&#x2699; Admin</a>
+      <button class="cart-btn" id="logoutBtn" onclick="handleLogout()" title="Logout">&#x23FB; Logout</button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <div class="landing-hero">
+    <h1>Waterflo Pipes &amp; Fittings</h1>
+    <p>Select a brand to browse products and place orders</p>
+  </div>
+
+  <!-- BRAND GRID -->
+  <main class="brand-grid" id="brandGrid">
+    <!-- Rendered by JS -->
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="landing-footer">
+    <p>www.waterflo.in</p>
+  </footer>
+
+  <script src="js/brand-config.js"></script>
+  <script>
+    // Load user info and filter brands by access
+    async function initLanding() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { window.location.href = '/login.html'; return; }
+        const { user } = await res.json();
+        document.getElementById('userInfo').textContent = user.company_name || user.contact_name;
+        if (user.role === 'admin') document.getElementById('adminLink').style.display = '';
+
+        // Fetch brands user has access to
+        const bRes = await fetch('/api/brands');
+        if (bRes.ok) {
+          const { brands } = await bRes.json();
+          renderBrandGrid(brands);
+        } else {
+          renderBrandGrid(BRANDS);
+        }
+      } catch (e) {
+        // Fallback: render all brands (works when opened without server)
+        renderBrandGrid(BRANDS);
+      }
+    }
+
+    function renderBrandGrid(brands) {
+      const grid = document.getElementById('brandGrid');
+      // Match brand metadata from BRANDS config
+      grid.innerHTML = brands.map(b => {
+        const cfg = getBrandById(b.id) || b;
+        return `
+        <a href="brand.html?brand=${b.id}" class="brand-card" style="--brand-color: ${cfg.color || b.color}">
+          <div class="brand-card-icon" style="background: ${cfg.heroGradient || ''}">${cfg.icon || b.short_name || ''}</div>
+          <div class="brand-card-body">
+            <div class="brand-card-name">${cfg.name || b.name}</div>
+            <div class="brand-card-tagline">${cfg.tagline || b.tagline || ''}</div>
+            <div class="brand-card-date">w.e.f. ${cfg.priceDate || b.price_date || ''}</div>
+          </div>
+          <div class="brand-card-arrow">&rarr;</div>
+        </a>`;
+      }).join('');
+    }
+
+    async function handleLogout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', initLanding);
+  </script>
+</body>
+</html>

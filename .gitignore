@@ -1,0 +1,4 @@
+node_modules/
+server/db/waterflo.db
+server/db/sessions.db
+.env

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#1a237e">
+  <title>Waterflo - Loading...</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header" id="brandHeader">
+    <div class="logo-wrap">
+      <a href="index.html" class="back-btn" title="Back to Brands">&larr;</a>
+      <div>
+        <div class="logo-text">Water<span>flo</span>&reg;</div>
+        <span class="logo-sub">Pipes &amp; Fittings</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="cart-btn" id="cartBtn" aria-label="Open Cart">
+        &#x1F6D2; <span class="cart-label">Cart</span>
+        <span class="cart-badge" id="cartBadge" style="display:none">0</span>
+      </button>
+      <button class="cart-btn" id="logoutBtn" onclick="handleLogout()" title="Logout" style="padding:8px 10px">&#x23FB;</button>
+    </div>
+  </header>
+
+  <!-- HERO (dynamic) -->
+  <div class="hero" id="brandHero">
+    <h1 id="heroTitle">Loading...</h1>
+    <p id="heroSub"></p>
+  </div>
+
+  <!-- CATEGORY TABS -->
+  <nav class="category-nav" aria-label="Product categories">
+    <div id="categoryTabs"></div>
+  </nav>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">&#x1F50D;</span>
+      <input type="search" id="searchInput" placeholder="Search by name, code, size..." autocomplete="off">
+      <button id="clearSearch" title="Clear search">&#x2715;</button>
+    </div>
+    <select id="sizeFilter" class="filter-select" aria-label="Filter by size">
+      <option value="">All Sizes</option>
+    </select>
+    <select id="subcatFilter" class="filter-select" aria-label="Filter by type" style="display:none">
+      <option value="">All Types</option>
+    </select>
+  </div>
+
+  <!-- RESULTS INFO -->
+  <div class="results-bar">
+    <span id="productCount">Loading...</span>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btnGridView" onclick="setView('grid')" title="Grid view">&#x229E; Grid</button>
+      <button class="view-btn" id="btnListView" onclick="setView('list')" title="List view">&#x2630; List</button>
+    </div>
+  </div>
+
+  <!-- PRODUCT GRID -->
+  <main id="productGrid" class="product-grid"></main>
+
+  <!-- CART OVERLAY -->
+  <div class="cart-overlay" id="cartOverlay" aria-hidden="true"></div>
+
+  <!-- CART PANEL -->
+  <aside class="cart-panel" id="cartPanel" aria-label="Shopping cart">
+    <div class="cart-header">
+      <div>
+        <h2>Your Cart</h2>
+        <div class="cart-header-sub"><span id="cartItemCount">0 items</span></div>
+      </div>
+      <div class="cart-header-actions">
+        <button class="btn-icon" id="clearCartBtn" title="Clear cart">&#x1F5D1; Clear</button>
+        <button id="closeCart" aria-label="Close cart">&#x2715;</button>
+      </div>
+    </div>
+
+    <div class="cart-items" id="cartItems">
+      <div class="cart-empty">
+        <div class="cart-empty-icon">&#x1F6D2;</div>
+        <p>Your cart is empty</p>
+        <p class="cart-empty-sub">Browse products and add items to get started</p>
+      </div>
+    </div>
+
+    <div class="cart-footer">
+      <div class="cart-total-row">
+        <span class="cart-total-label">Estimated Total</span>
+        <span id="cartTotal">&#x20B9;0.00</span>
+      </div>
+      <div class="cart-footer-btns">
+        <button class="btn-quote" id="btnQuote">&#x1F4C4; Get Quote</button>
+        <button class="btn-order" id="btnOrder">&#x1F6D2; Place Order</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- QUOTE MODAL -->
+  <div class="modal" id="quoteModal" role="dialog" aria-modal="true" aria-label="Quotation">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>&#x1F4C4; Quotation</h2>
+        <button id="closeQuote" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body" id="quoteContent"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="closeQuote2" onclick="closeQuote()">Close</button>
+        <button class="btn-primary" id="btnPrint">&#x1F5A8;&#xFE0F; Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER MODAL -->
+  <div class="modal" id="orderModal" role="dialog" aria-modal="true" aria-label="Place Order">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>&#x1F6D2; Place Order</h2>
+        <button id="closeOrder" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS: brand-config first, then brand data (dynamic), then app -->
+  <script src="js/brand-config.js"></script>
+  <script>
+    // Dynamically load brand data file
+    (function() {
+      var brandId = getActiveBrandId();
+      var brand = getBrandById(brandId);
+      if (!brand) {
+        // Fallback to first brand
+        brand = BRANDS[0];
+        brandId = brand.id;
+      }
+      // Store active brand globally
+      window.activeBrand = brand;
+      document.title = 'Waterflo - ' + brand.name;
+
+      // Load app.js first (registers the brand-data-ready listener)
+      var appScript = document.createElement('script');
+      appScript.src = 'js/app.js';
+      appScript.onload = function() {
+        // Now load brand data (which dispatches brand-data-ready when done)
+        var s = document.createElement('script');
+        s.src = brand.dataFile;
+        s.onerror = function() {
+          document.getElementById('productGrid').innerHTML =
+            '<div class="no-results"><p>Failed to load product data for ' + brand.name + '</p></div>';
+        };
+        document.head.appendChild(s);
+      };
+      document.head.appendChild(appScript);
+    })();
+  </script>
+</body>
+</html>
