@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS products (
   pipe_length REAL,
   qty_per_length INTEGER,
   coming_soon INTEGER DEFAULT 0,
+  image_url TEXT,
   active INTEGER DEFAULT 1,
   UNIQUE(brand_id, code)
 );

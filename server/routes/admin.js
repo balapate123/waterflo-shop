@@ -1,6 +1,28 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
+
+// Image upload config
+const storage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'uploads', 'products'),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = 'prod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + ext;
+    cb(null, name);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
+  }
+});
 
 // All routes require admin
 router.use(requireAdmin);
@@ -268,6 +290,19 @@ router.get('/products', (req, res) => {
   res.json({ products });
 });
 
+// Image upload endpoint
+router.post('/products/upload-image', upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No valid image file uploaded (jpg, png, webp, max 2MB)' });
+  res.json({ image_url: '/uploads/products/' + req.file.filename });
+});
+
+// Delete old image helper
+function deleteOldImage(imageUrl) {
+  if (!imageUrl) return;
+  const filePath = path.join(__dirname, '..', '..', imageUrl);
+  fs.unlink(filePath, () => {}); // ignore errors
+}
+
 router.post('/products', (req, res) => {
   const db = req.app.get('db');
   const p = req.body;
@@ -281,14 +316,14 @@ router.post('/products', (req, res) => {
   if (existing) return res.status(409).json({ error: 'Product code already exists for this brand' });
 
   const result = db.prepare(`
-    INSERT INTO products (brand_id, code, name, category, subcategory, size, size_mm, standard, rate, unit, std_pkg, qty_box, qty_bundle, rate_3mtr, rate_5mtr, pipe_length, qty_per_length, coming_soon, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO products (brand_id, code, name, category, subcategory, size, size_mm, standard, rate, unit, std_pkg, qty_box, qty_bundle, rate_3mtr, rate_5mtr, pipe_length, qty_per_length, coming_soon, image_url, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `).run(
     p.brand_id, p.code, p.name, p.category, p.subcategory, p.size,
     p.size_mm || 0, p.standard || null, p.rate || 0, p.unit || 'pcs',
     p.std_pkg || 0, p.qty_box || 0, p.qty_bundle || 0,
     p.rate_3mtr || null, p.rate_5mtr || null, p.pipe_length || null,
-    p.qty_per_length || null, p.coming_soon ? 1 : 0
+    p.qty_per_length || null, p.coming_soon ? 1 : 0, p.image_url || null
   );
 
   res.status(201).json({ message: 'Product created', id: result.lastInsertRowid });
@@ -304,7 +339,7 @@ router.put('/products/:id', (req, res) => {
 
   const fields = ['code', 'name', 'category', 'subcategory', 'size', 'size_mm', 'standard',
     'rate', 'unit', 'std_pkg', 'qty_box', 'qty_bundle', 'rate_3mtr', 'rate_5mtr',
-    'pipe_length', 'qty_per_length', 'coming_soon', 'active'];
+    'pipe_length', 'qty_per_length', 'coming_soon', 'active', 'image_url'];
 
   const updates = [];
   const params = [];

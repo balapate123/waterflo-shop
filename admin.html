@@ -174,6 +174,7 @@
       <div class="modal-header">
         <h2 id="orderDetailTitle">Order Details</h2>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-sm btn-edit" onclick="printOrderForm()" style="background:#bf360c">&#x1F4CB; Order Form</button>
           <button class="btn-sm btn-edit" onclick="printOrderDetail()" style="background:#00695c">&#x1F5A8; Print</button>
           <button onclick="closeModal('orderDetailModal')" style="background:none;border:none;color:white;font-size:1.4rem;cursor:pointer">&times;</button>
         </div>
@@ -277,6 +278,16 @@
             <div class="form-group">
               <label><input type="checkbox" id="pf_coming_soon" name="coming_soon"> Coming Soon</label>
             </div>
+          </div>
+          <div class="form-group">
+            <label>Product Image</label>
+            <div id="pf_image_preview" style="margin-bottom:8px;display:none">
+              <img id="pf_image_img" src="" alt="Product" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid #ddd">
+              <button type="button" onclick="removeProductImage()" style="margin-left:8px;color:#d32f2f;background:none;border:none;cursor:pointer;font-size:0.85rem">Remove</button>
+            </div>
+            <input type="file" id="pf_image_file" accept=".jpg,.jpeg,.png,.webp" onchange="previewProductImage(this)">
+            <input type="hidden" id="pf_image_url" name="image_url">
+            <small style="color:#888">JPG, PNG or WebP, max 2MB</small>
           </div>
           <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:8px">Save Product</button>
         </form>
@@ -950,6 +961,279 @@
       generateInvoicePDF(lastViewedOrder.order.id);
     }
 
+    async function printOrderForm() {
+      if (!lastViewedOrder) return;
+      var o = lastViewedOrder.order;
+      var orderItems = lastViewedOrder.items;
+
+      // Fetch all products for this brand
+      var res = await fetch('/api/admin/products?brand_id=' + o.brand_id);
+      if (!res.ok) { alert('Failed to load products'); return; }
+      var data = await res.json();
+      var allProducts = data.products;
+
+      // Build a lookup: code -> order qty
+      var orderQtyByCode = {};
+      orderItems.forEach(function(it) {
+        orderQtyByCode[it.code] = (orderQtyByCode[it.code] || 0) + it.qty;
+      });
+
+      // Group products into sections by category + subcategory
+      // Each section becomes a grid table
+      var sections = {};
+      var sectionOrder = [];
+      allProducts.forEach(function(p) {
+        if (!p.active) return;
+        var key = p.category + '|' + p.subcategory;
+        if (!sections[key]) {
+          sections[key] = { category: p.category, subcategory: p.subcategory, products: [] };
+          sectionOrder.push(key);
+        }
+        sections[key].products.push(p);
+      });
+
+      // Now group sections that share the same size columns into grid tables
+      // Strategy: group by category, then within each category group subcategories
+      // that have the same set of sizes
+      var categoryGroups = {};
+      var catOrder = [];
+      sectionOrder.forEach(function(key) {
+        var sec = sections[key];
+        var cat = sec.category;
+        if (!categoryGroups[cat]) {
+          categoryGroups[cat] = [];
+          catOrder.push(cat);
+        }
+        categoryGroups[cat].push(sec);
+      });
+
+      // For each category, build grid tables grouping subcategories with same sizes
+      var tablesHTML = '';
+      var totalItems = 0;
+      var totalBoxes = 0;
+
+      catOrder.forEach(function(cat) {
+        var secs = categoryGroups[cat];
+
+        // Collect all unique sizes in this category, sorted by size_mm
+        var sizesMap = {};
+        secs.forEach(function(sec) {
+          sec.products.forEach(function(p) {
+            if (!sizesMap[p.size]) sizesMap[p.size] = p.size_mm || 0;
+          });
+        });
+        var sizes = Object.keys(sizesMap).sort(function(a, b) { return sizesMap[a] - sizesMap[b]; });
+
+        // Check if reducers - they have compound sizes like "1"x½"", group differently
+        var isReducer = (cat === 'reducers');
+
+        if (isReducer) {
+          // Group reducers by their "base size" (the larger size in the compound)
+          // e.g., ¾"×½", 1"×½", 1"×¾" — group by first part
+          // Build lookup: subcategory+size -> product
+          var redLookup = {};
+          secs.forEach(function(sec) {
+            sec.products.forEach(function(p) {
+              redLookup[sec.subcategory + '|' + p.size] = p;
+            });
+          });
+
+          // Subcategory names for rows
+          var redSubNames = [];
+          var redSubSeen = {};
+          secs.forEach(function(sec) {
+            if (!redSubSeen[sec.subcategory]) {
+              redSubSeen[sec.subcategory] = true;
+              redSubNames.push({ key: sec.subcategory, name: formatSubcategoryName(sec.subcategory) });
+            }
+          });
+
+          // All reducer sizes sorted
+          tablesHTML += '<table class="of-table"><thead>';
+          tablesHTML += '<tr class="of-cat-row"><th colspan="' + (sizes.length + 1) + '">REDUCERS</th></tr>';
+          tablesHTML += '<tr><th class="of-th-name">RED. SIZE</th>';
+          sizes.forEach(function(s) { tablesHTML += '<th class="of-th-size">' + s + '</th>'; });
+          tablesHTML += '</tr></thead><tbody>';
+
+          redSubNames.forEach(function(sub) {
+            tablesHTML += '<tr><td class="of-td-name">' + sub.name + '</td>';
+            sizes.forEach(function(s) {
+              var p = redLookup[sub.key + '|' + s];
+              if (p) {
+                var qty = orderQtyByCode[p.code] || '';
+                var cls = qty ? ' of-filled' : '';
+                if (qty) { totalItems += qty; totalBoxes += qty; }
+                tablesHTML += '<td class="of-td-qty' + cls + '">' + qty + '</td>';
+              } else {
+                tablesHTML += '<td class="of-td-na">-</td>';
+              }
+            });
+            tablesHTML += '</tr>';
+          });
+
+          tablesHTML += '</tbody></table>';
+        } else {
+          // For non-reducers, rows = subcategory names, columns = sizes
+          // Build lookup: subcategory+size -> product
+          var prodLookup = {};
+          secs.forEach(function(sec) {
+            sec.products.forEach(function(p) {
+              prodLookup[p.subcategory + '|' + p.size] = p;
+            });
+          });
+
+          // Subcategory display names & order
+          var subNames = [];
+          var subSeen = {};
+          secs.forEach(function(sec) {
+            if (!subSeen[sec.subcategory]) {
+              subSeen[sec.subcategory] = true;
+              // Use first product's name as display name
+              var displayName = sec.products[0] ? sec.products[0].name : sec.subcategory;
+              subNames.push({ key: sec.subcategory, name: displayName });
+            }
+          });
+
+          var catTitle = formatCategoryName(cat);
+          tablesHTML += '<table class="of-table"><thead>';
+          tablesHTML += '<tr class="of-cat-row"><th colspan="' + (sizes.length + 1) + '">' + catTitle + '</th></tr>';
+          tablesHTML += '<tr><th class="of-th-name">FITTING SIZE</th>';
+          sizes.forEach(function(s) { tablesHTML += '<th class="of-th-size">' + s + '</th>'; });
+          tablesHTML += '</tr></thead><tbody>';
+
+          subNames.forEach(function(sub) {
+            tablesHTML += '<tr><td class="of-td-name">' + sub.name.toUpperCase() + '</td>';
+            sizes.forEach(function(s) {
+              var p = prodLookup[sub.key + '|' + s];
+              if (p) {
+                var qty = orderQtyByCode[p.code] || '';
+                var cls = qty ? ' of-filled' : '';
+                if (qty) { totalItems += qty; totalBoxes += qty; }
+                tablesHTML += '<td class="of-td-qty' + cls + '">' + qty + '</td>';
+              } else {
+                tablesHTML += '<td class="of-td-na">-</td>';
+              }
+            });
+            tablesHTML += '</tr>';
+          });
+
+          tablesHTML += '</tbody></table>';
+        }
+      });
+
+      // Check for unmatched order items (codes not in product catalog)
+      var allProductCodes = {};
+      allProducts.forEach(function(p) { allProductCodes[p.code] = true; });
+      var unmatchedItems = orderItems.filter(function(it) { return !allProductCodes[it.code]; });
+      if (unmatchedItems.length > 0) {
+        tablesHTML += '<table class="of-table"><thead>';
+        tablesHTML += '<tr class="of-cat-row"><th colspan="5">OTHER ITEMS</th></tr>';
+        tablesHTML += '<tr><th class="of-th-name">Product</th><th class="of-th-size">Code</th><th class="of-th-size">Size</th><th class="of-th-size">Unit</th><th class="of-th-size">Qty</th></tr>';
+        tablesHTML += '</thead><tbody>';
+        unmatchedItems.forEach(function(it) {
+          tablesHTML += '<tr><td class="of-td-name">' + it.name + '</td>';
+          tablesHTML += '<td class="of-td-qty">' + it.code + '</td>';
+          tablesHTML += '<td class="of-td-qty">' + it.size + '</td>';
+          tablesHTML += '<td class="of-td-qty">' + (it.unit_label || '') + '</td>';
+          tablesHTML += '<td class="of-td-qty of-filled">' + it.qty + '</td></tr>';
+          totalItems += it.qty;
+        });
+        tablesHTML += '</tbody></table>';
+      }
+
+      // Build the full HTML
+      var brandName = o.brand_name || '';
+      var brandShort = o.brand_short_name || brandName;
+      var formTitle = brandShort + ' ORDER FORM';
+      var partyName = o.company_name || o.contact_name || '';
+      var orderDate = fmtDate(o.created_at);
+      var state = o.address || '';
+
+      var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+        + '<title>Order Form - ' + o.order_no + '</title>'
+        + '<style>'
+        + '*{margin:0;padding:0;box-sizing:border-box}'
+        + 'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;padding:12px}'
+        + '.of-header{text-align:center;margin-bottom:8px}'
+        + '.of-brand{font-size:16px;font-weight:900}'
+        + '.of-title{font-size:13px;font-weight:700}'
+        + '.of-subtitle{font-size:11px;font-weight:700}'
+        + '.of-meta{display:flex;justify-content:space-between;margin-bottom:8px;font-size:10px;line-height:1.6}'
+        + '.of-meta strong{font-weight:700}'
+        + '.of-meta td{padding:1px 8px 1px 0}'
+        + '.of-table{width:100%;border-collapse:collapse;margin-bottom:6px;page-break-inside:avoid}'
+        + '.of-table th,.of-table td{border:1px solid #000;padding:2px 3px;text-align:center;font-size:9px}'
+        + '.of-th-name{text-align:left;font-weight:700;min-width:90px;font-size:8px;background:#f0f0f0}'
+        + '.of-th-size{font-weight:700;min-width:32px;font-size:8px;background:#f0f0f0}'
+        + '.of-td-name{text-align:left;font-weight:600;font-size:8px;white-space:nowrap}'
+        + '.of-td-qty{min-width:28px;height:16px}'
+        + '.of-td-na{color:#999;font-size:7px}'
+        + '.of-filled{background:#ffffcc;font-weight:700;font-size:11px;color:#b71c1c}'
+        + '.of-cat-row th{background:#e0e0e0;font-weight:700;font-size:10px;text-transform:uppercase;padding:3px}'
+        + '.of-footer{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;font-weight:700;border-top:2px solid #000;padding-top:6px}'
+        + '.of-footer div{margin-right:30px}'
+        + '.of-page-num{text-align:right;font-size:8px;color:#666;margin-top:4px}'
+        + '@media print{body{padding:8px;font-size:10px}.of-table th,.of-table td{font-size:8px;padding:1px 2px}.of-filled{background:#ffffcc !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+        + '@page{size:A4 portrait;margin:10mm}'
+        + '</style></head><body>'
+        + '<div class="of-header">'
+        + '<div class="of-brand">' + brandShort + ' &reg;</div>'
+        + '<div class="of-title">WATERFLO PIPING SYSTEM</div>'
+        + '<div class="of-subtitle">' + formTitle + '</div>'
+        + '</div>'
+        + '<div class="of-meta">'
+        + '<table><tr><td><strong>PARTY NAME:-</strong></td><td>' + partyName + '</td></tr>'
+        + '<tr><td><strong>ORDER DATE:-</strong></td><td>' + orderDate + '</td></tr>'
+        + '<tr><td><strong>ORDER NO:-</strong></td><td>' + o.order_no + '</td></tr></table>'
+        + '<table><tr><td><strong>STATE:-</strong></td><td>' + state + '</td></tr>'
+        + '<tr><td><strong>LORRY NO:-</strong></td><td>_______________</td></tr>'
+        + '<tr><td><strong>DELIVERY:-</strong></td><td>_______________</td></tr></table>'
+        + '</div>'
+        + tablesHTML
+        + '<div class="of-footer">'
+        + '<div>BOX (B):- ____</div>'
+        + '<div>BOX (S):- ____</div>'
+        + '<div>ITEM:- ' + totalItems + '</div>'
+        + '<div>TOTAL WT:- ____</div>'
+        + '</div>'
+        + '<script>window.onload=function(){window.print()}<\/script>'
+        + '</body></html>';
+
+      var win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+    }
+
+    function formatCategoryName(cat) {
+      var names = {
+        pipes: 'PIPES',
+        fittings: 'FITTINGS',
+        reducers: 'REDUCERS',
+        valves: 'VALVES',
+        brass: 'BRASS FITTINGS',
+        accessories: 'ACCESSORIES',
+        fabricated: 'FABRICATED FITTINGS',
+        mixer: 'MIXER ADAPTORS',
+        mixeradaptor: 'MIXER ADAPTORS',
+        solvent: 'SOLVENT & LUBRICANT'
+      };
+      return names[cat] || cat.toUpperCase();
+    }
+
+    function formatSubcategoryName(sub) {
+      var names = {
+        redtee: 'R. TEE',
+        redbush: 'R. BUSH',
+        redcoupler: 'R. COUPLER',
+        redelbow: 'R. ELBOW',
+        redfta: 'R. F.T.A.',
+        redmta: 'R. M.T.A.',
+        red_ss: 'S.S',
+        fourwaytee: 'FOUR WAY TEE'
+      };
+      return names[sub] || sub.replace(/_/g, ' ').toUpperCase();
+    }
+
     async function changeOrderStatus(id, status) {
       if (!status) return;
       var r = await apiPut('/api/admin/orders/' + id, { status: status });
@@ -1000,6 +1284,9 @@
       var form = document.getElementById('productForm');
       form.reset();
       document.getElementById('pf_id').value = '';
+      document.getElementById('pf_image_url').value = '';
+      document.getElementById('pf_image_preview').style.display = 'none';
+      document.getElementById('pf_image_file').value = '';
       document.getElementById('productModalTitle').textContent = 'Add Product';
 
       if (product) {
@@ -1021,6 +1308,11 @@
         document.getElementById('pf_rate_5mtr').value = product.rate_5mtr || '';
         document.getElementById('pf_pipe_length').value = product.pipe_length || '';
         document.getElementById('pf_coming_soon').checked = !!product.coming_soon;
+        if (product.image_url) {
+          document.getElementById('pf_image_url').value = product.image_url;
+          document.getElementById('pf_image_img').src = product.image_url;
+          document.getElementById('pf_image_preview').style.display = 'flex';
+        }
       }
 
       document.getElementById('productModal').classList.add('open');
@@ -1039,10 +1331,50 @@
       if (product) openProductModal(product);
     }
 
+    function previewProductImage(input) {
+      if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('pf_image_img').src = e.target.result;
+          document.getElementById('pf_image_preview').style.display = 'flex';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function removeProductImage() {
+      document.getElementById('pf_image_url').value = '';
+      document.getElementById('pf_image_file').value = '';
+      document.getElementById('pf_image_preview').style.display = 'none';
+      document.getElementById('pf_image_img').src = '';
+    }
+
     async function saveProduct(e) {
       e.preventDefault();
       var form = e.target;
       var id = document.getElementById('pf_id').value;
+
+      // Upload image first if a new file was selected
+      var imageUrl = document.getElementById('pf_image_url').value || null;
+      var fileInput = document.getElementById('pf_image_file');
+      if (fileInput.files && fileInput.files[0]) {
+        var fd = new FormData();
+        fd.append('image', fileInput.files[0]);
+        try {
+          var uploadRes = await fetch('/api/admin/products/upload-image', { method: 'POST', body: fd });
+          var uploadData = await uploadRes.json();
+          if (uploadRes.ok) {
+            imageUrl = uploadData.image_url;
+          } else {
+            alert('Image upload failed: ' + (uploadData.error || 'Unknown error'));
+            return;
+          }
+        } catch (err) {
+          alert('Image upload failed: ' + err.message);
+          return;
+        }
+      }
+
       var data = {
         brand_id: form.brand_id.value,
         code: form.code.value,
@@ -1059,7 +1391,8 @@
         rate_3mtr: parseFloat(form.rate_3mtr.value) || null,
         rate_5mtr: parseFloat(form.rate_5mtr.value) || null,
         pipe_length: parseFloat(form.pipe_length.value) || null,
-        coming_soon: form.coming_soon.checked ? 1 : 0
+        coming_soon: form.coming_soon.checked ? 1 : 0,
+        image_url: imageUrl
       };
 
       var r;

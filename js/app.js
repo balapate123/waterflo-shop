@@ -308,7 +308,9 @@ function updateCartUI() {
   var countEl = document.getElementById('cartItemCount');
 
   if (userDiscount > 0 && lines > 0) {
-    totalEl.textContent = fmtFull(cartNetTotal());
+    totalEl.innerHTML =
+      '<span style="text-decoration:line-through;color:#999;font-size:0.85em">' + fmtFull(cartTotal()) + '</span> '
+      + fmtFull(cartNetTotal());
     countEl.innerHTML =
       lines + ' item' + (lines !== 1 ? 's' : '')
       + ' &middot; <span style="color:#2e7d32">' + userDiscount + '% off</span>';
@@ -465,9 +467,13 @@ function renderGridCard(p) {
       + '</div>';
   }
 
+  var imageContent = p.image_url
+    ? '<img src="' + p.image_url + '" alt="' + p.name + '" class="product-img">'
+    : '<span class="product-emoji">' + getProductIcon(p) + '</span>';
+
   return '<div class="product-card' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="product-image cat-' + p.category + '">'
-    +   '<span class="product-emoji">' + getProductIcon(p) + '</span>'
+    +   imageContent
     +   (p.standard ? '<span class="std-badge">' + p.standard.replace('ASTM ','') + '</span>' : '')
     +   (inCart ? '<span class="in-cart-dot" title="In cart">\u25CF</span>' : '')
     + '</div>'
@@ -510,9 +516,13 @@ function renderListCard(p) {
     pkgText = ' \u00B7 Pkg: ' + p.std_pkg + (p.qty_box ? ' \u00B7 Box: ' + p.qty_box.toLocaleString('en-IN') : '');
   }
 
+  var listImageContent = p.image_url
+    ? '<img src="' + p.image_url + '" alt="' + p.name + '" class="pli-img">'
+    : '<span class="pli-emoji">' + getProductIcon(p) + '</span>';
+
   return '<div class="pli' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="pli-thumb cat-' + p.category + '">'
-    +   '<span class="pli-emoji">' + getProductIcon(p) + '</span>'
+    +   listImageContent
     +   (p.standard ? '<small class="pli-std">' + p.standard.replace('ASTM ','') + '</small>' : '')
     + '</div>'
     + '<div class="pli-content">'
@@ -940,6 +950,26 @@ function init() {
   renderFilters();
   renderProducts();
   updateCartUI();
+
+  // Fetch product images from API and merge into PRODUCTS
+  var brandId = activeBrand ? activeBrand.id : '';
+  if (brandId) {
+    fetch('/api/brands/' + brandId + '/products')
+      .then(function(res) { return res.ok ? res.json() : null; })
+      .then(function(data) {
+        if (!data || !data.products) return;
+        var imageMap = {};
+        data.products.forEach(function(p) {
+          if (p.image_url) imageMap[p.code] = p.image_url;
+        });
+        if (Object.keys(imageMap).length === 0) return;
+        PRODUCTS.forEach(function(p) {
+          if (imageMap[p.code]) p.image_url = imageMap[p.code];
+        });
+        renderProducts();
+      })
+      .catch(function() {});
+  }
 }
 
 // Wait for brand data to be ready

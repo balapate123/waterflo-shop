@@ -19,6 +19,14 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Migrations: add image_url column to products if missing
+try {
+  db.prepare("SELECT image_url FROM products LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE products ADD COLUMN image_url TEXT");
+  console.log('Migration: added image_url to products table');
+}
+
 // Migrations: add discount columns to orders if missing
 try {
   db.prepare("SELECT discount_percent FROM orders LIMIT 1").get();
@@ -58,7 +66,7 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
 
   // Allow static assets (css, js, images, fonts)
-  if (req.path.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) return next();
+  if (req.path.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$/)) return next();
 
   // Allow login page
   if (req.path === '/login.html' || req.path === '/login') return next();
@@ -77,6 +85,9 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Serve uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Serve static files from project root
 app.use(express.static(path.join(__dirname, '..'), {
