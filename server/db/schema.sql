@@ -90,3 +90,11 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON products(brand_id, category)
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_brand ON orders(brand_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
+
+-- Triggers
+CREATE TRIGGER IF NOT EXISTS trg_orders_updated_at
+AFTER UPDATE ON orders
+BEGIN
+  UPDATE orders SET updated_at = datetime('now') WHERE id = NEW.id;
+END;

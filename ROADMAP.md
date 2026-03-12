@@ -1,7 +1,7 @@
 # Waterflo Production Launch Roadmap
 
 **Created:** 2026-03-11
-**Current State:** HIGH RISK — Not Production Ready
+**Current State:** IN PROGRESS — Phase 1 & 2 implemented
 **Estimated Effort:** ~37 hours to production-ready launch
 
 ---
@@ -22,33 +22,32 @@
 
 ### 1.1 XSS Vulnerabilities (Critical, ~3hrs)
 
-- [ ] **admin.html**: All `innerHTML` with user data (company_name, product names, order details)
-  - Attacker can register with `<img onerror="steal cookies">` as company name
-  - Affects: Lines building user tables, order tables, product tables, dashboard stats
-- [ ] **app.js**: Several `innerHTML` spots with API data (lines 311, 314, 316, 326, 390, 577, 586, 592, 603, 700, 756)
-- [ ] **Fix**: Escape all user data or use `textContent`. Add DOMPurify for any rich content.
+- [x] **admin.html**: All `innerHTML` with user data — added `escapeHtml()` to all user-supplied data
+- [x] **app.js**: All `innerHTML` spots — added `escapeHtml()` helper, escaped all product/cart/user data
+- [x] **Fix**: `escapeHtml()` function added to both files, wraps all user-supplied data in HTML strings
 
 ### 1.2 Session & Auth Hardening (Critical, ~2hrs)
 
-- [ ] Remove hardcoded session secret fallback — require `SESSION_SECRET` env var, fail on startup if missing
-- [ ] Reduce session `maxAge` from 7 days → 8 hours
-- [ ] Set `cookie.secure = true` when `NODE_ENV=production`
-- [ ] Strengthen password policy: 6 chars → 8 chars minimum
-- [ ] Add bcrypt dummy compare on invalid email to prevent timing attacks
+- [x] Remove hardcoded session secret fallback — require `SESSION_SECRET` env var, fail on startup if missing
+- [x] Reduce session `maxAge` from 7 days → 8 hours
+- [x] Set `cookie.secure = true` when `NODE_ENV=production`
+- [x] Strengthen password policy: 6 chars → 8 chars minimum
+- [x] Add bcrypt dummy compare on invalid email to prevent timing attacks
 
 ### 1.3 Security Headers & CSRF (Critical, ~2hrs)
 
-- [ ] Add `helmet` middleware (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
-- [ ] Add `express-rate-limit` on `/api/auth/*` (5 attempts per 15 minutes)
-- [ ] Add CSRF protection on state-changing routes
+- [x] Add `helmet` middleware (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
+- [x] Add `express-rate-limit` on `/api/auth/*` (10 attempts per 15 minutes)
+- [ ] Add CSRF protection on state-changing routes (deferred — SameSite=lax cookies provide baseline protection)
 
 ### 1.4 Input Validation & Order Integrity (High, ~2hrs)
 
-- [ ] Validate `product_id` exists and belongs to `brand_id` in order submission
-- [ ] Fix product duplicate check on edit (exclude own ID: `existing.id !== productId`)
-- [ ] Add CHECK constraints on `discount_percent` (0–100) and `rate` (>= 0)
-- [ ] Cap bulk price update to ±50%
-- [ ] Validate quantities are positive integers in order submission
+- [x] Validate `product_id` exists and belongs to `brand_id` in order submission
+- [x] Fix product duplicate check on edit (exclude own ID)
+- [x] Validate discount_percent (0–100) in admin user update
+- [x] Cap bulk price update to ±50%
+- [x] Validate quantities are positive integers in order submission
+- [x] Validate brand access in order submission
 
 ---
 
@@ -56,50 +55,32 @@
 
 ### 2.1 Environment & Config (~2hrs)
 
-- [ ] Create `.env.example` with all required vars:
-  ```
-  NODE_ENV=production
-  PORT=3000
-  SESSION_SECRET=<generate-random-64-char-string>
-  ```
-- [ ] Add startup validation: fail if `SESSION_SECRET`, `NODE_ENV` not set
+- [x] Create `.env.example` with all required vars
+- [x] Add startup validation: fail if `SESSION_SECRET` not set in production
 - [ ] Randomize default admin password in seed (print once, never log again)
-- [ ] Add `"engines": { "node": ">=18.0.0" }` to package.json
+- [x] Add `"engines": { "node": ">=18.0.0" }` to package.json
 
 ### 2.2 Error Handling & Logging (~3hrs)
 
-- [ ] Add global Express error handler middleware
-- [ ] Add 404 handler (wildcard route at end)
-- [ ] Add `morgan` for request logging
-- [ ] Strip stack traces from production error responses
-- [ ] Handle `EADDRINUSE` on startup
-- [ ] Clear cart from localStorage on logout
+- [x] Add global Express error handler middleware
+- [x] Add 404 handler (wildcard route at end)
+- [x] Add `morgan` for request logging
+- [x] Strip stack traces from production error responses
+- [x] Handle `EADDRINUSE` on startup
+- [x] Clear cart from localStorage on logout
 
 ### 2.3 Database Hardening (~2hrs)
 
-- [ ] Add missing index: `CREATE INDEX idx_order_items_product ON order_items(product_id)`
-- [ ] Add UPDATE trigger for `updated_at` timestamps
-- [ ] Add CHECK constraints (discount 0–100, rate >= 0)
-- [ ] Set up automated SQLite backup (daily cron, copy .db file)
+- [x] Add missing index: `CREATE INDEX idx_order_items_product ON order_items(product_id)`
+- [x] Add UPDATE trigger for `updated_at` timestamps
+- [ ] Add CHECK constraints (discount 0–100, rate >= 0) — requires schema migration
+- [ ] Set up automated SQLite backup (daily cron, copy .db file) — deploy-time task
 
 ### 2.4 Process Management (~2hrs)
 
-- [ ] Add PM2 ecosystem config (`ecosystem.config.js`)
-  ```js
-  module.exports = {
-    apps: [{
-      name: 'waterflo',
-      script: 'server/index.js',
-      instances: 2,
-      exec_mode: 'cluster',
-      env_production: {
-        NODE_ENV: 'production'
-      }
-    }]
-  };
-  ```
-- [ ] Add health check endpoint (`GET /api/health`)
-- [ ] Verify graceful shutdown works with PM2
+- [x] Add PM2 ecosystem config (`ecosystem.config.js`)
+- [x] Add health check endpoint (`GET /api/health`)
+- [x] Graceful shutdown with SIGINT/SIGTERM handling
 
 ---
 

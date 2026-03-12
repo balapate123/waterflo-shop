@@ -2,6 +2,13 @@
 // Cart item shape:
 // { cartKey, brandId, code, name, size, category, unitType, unitLabel, pcsPerUnit, ratePerUnit, qty }
 
+// ─── HTML ESCAPING ──────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ─── GLOBALS ────────────────────────────────────────────────────────────────────
 var activeBrand = window.activeBrand || null;
 var CATEGORIES = [];
@@ -366,7 +373,7 @@ function renderCartItems() {
         + '<div class="ci-img cat-' + item.category + '">' + getCategoryIcon(item.code) + '</div>'
         + '<div class="ci-body">'
         +   '<div class="ci-row1">'
-        +     '<div class="ci-name">' + item.name + '</div>'
+        +     '<div class="ci-name">' + escapeHtml(item.name) + '</div>'
         +     '<div class="qty-control">'
         +       '<button class="qty-btn" onclick="updateQty(\'' + item.cartKey + '\',-1)">\u2212</button>'
         +       '<span class="qty-val">' + item.qty + '</span>'
@@ -374,7 +381,7 @@ function renderCartItems() {
         +     '</div>'
         +   '</div>'
         +   '<div class="ci-row2">'
-        +     '<span class="ci-code">' + item.code + ' \u00B7 ' + item.size + '</span>'
+        +     '<span class="ci-code">' + escapeHtml(item.code) + ' \u00B7 ' + escapeHtml(item.size) + '</span>'
         +     '<span class="ci-subtotal">' + fmtFull(subtotal) + '</span>'
         +   '</div>'
         +   buildCartPicker(item)
@@ -468,21 +475,21 @@ function renderGridCard(p) {
   }
 
   var imageContent = p.image_url
-    ? '<img src="' + p.image_url + '" alt="' + p.name + '" class="product-img">'
+    ? '<img src="' + escapeHtml(p.image_url) + '" alt="' + escapeHtml(p.name) + '" class="product-img">'
     : '<span class="product-emoji">' + getProductIcon(p) + '</span>';
 
   return '<div class="product-card' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="product-image cat-' + p.category + '">'
     +   imageContent
-    +   (p.standard ? '<span class="std-badge">' + p.standard.replace('ASTM ','') + '</span>' : '')
+    +   (p.standard ? '<span class="std-badge">' + escapeHtml(p.standard.replace('ASTM ','')) + '</span>' : '')
     +   (inCart ? '<span class="in-cart-dot" title="In cart">\u25CF</span>' : '')
     + '</div>'
     + '<div class="product-body">'
-    +   '<div class="product-type">' + (SUBCATEGORY_NAMES[p.subcategory] || p.subcategory) + '</div>'
-    +   '<div class="product-name">' + p.name + '</div>'
+    +   '<div class="product-type">' + escapeHtml(SUBCATEGORY_NAMES[p.subcategory] || p.subcategory) + '</div>'
+    +   '<div class="product-name">' + escapeHtml(p.name) + '</div>'
     +   '<div class="product-meta">'
-    +     '<span class="product-code">' + p.code + '</span>'
-    +     '<span class="size-badge">' + p.size + '</span>'
+    +     '<span class="product-code">' + escapeHtml(p.code) + '</span>'
+    +     '<span class="size-badge">' + escapeHtml(p.size) + '</span>'
     +   '</div>'
     +   pkgInfo
     + '</div>'
@@ -517,23 +524,23 @@ function renderListCard(p) {
   }
 
   var listImageContent = p.image_url
-    ? '<img src="' + p.image_url + '" alt="' + p.name + '" class="pli-img">'
+    ? '<img src="' + escapeHtml(p.image_url) + '" alt="' + escapeHtml(p.name) + '" class="pli-img">'
     : '<span class="pli-emoji">' + getProductIcon(p) + '</span>';
 
   return '<div class="pli' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="pli-thumb cat-' + p.category + '">'
     +   listImageContent
-    +   (p.standard ? '<small class="pli-std">' + p.standard.replace('ASTM ','') + '</small>' : '')
+    +   (p.standard ? '<small class="pli-std">' + escapeHtml(p.standard.replace('ASTM ','')) + '</small>' : '')
     + '</div>'
     + '<div class="pli-content">'
     +   '<div class="pli-top">'
-    +     '<span class="product-type">' + (SUBCATEGORY_NAMES[p.subcategory] || p.subcategory) + '</span>'
-    +     '<strong class="pli-name">' + p.name + '</strong>'
-    +     '<span class="size-badge">' + p.size + '</span>'
+    +     '<span class="product-type">' + escapeHtml(SUBCATEGORY_NAMES[p.subcategory] || p.subcategory) + '</span>'
+    +     '<strong class="pli-name">' + escapeHtml(p.name) + '</strong>'
+    +     '<span class="size-badge">' + escapeHtml(p.size) + '</span>'
     +     (inCart ? '<span class="in-cart-dot" title="In cart">\u25CF</span>' : '')
     +   '</div>'
     +   '<div class="pli-meta">'
-    +     '<span class="product-code">' + p.code + '</span>' + pkgText
+    +     '<span class="product-code">' + escapeHtml(p.code) + '</span>' + pkgText
     +   '</div>'
     +   '<div class="pli-bottom">'
     +     buildCardPicker(p)
@@ -666,10 +673,10 @@ function openQuote() {
     var isPipe   = item.category === 'pipes';
     return '<tr>'
       + '<td>' + (i+1) + '</td>'
-      + '<td class="q-code">' + item.code + '</td>'
-      + '<td>' + item.name + '</td>'
-      + '<td>' + item.size + '</td>'
-      + '<td>' + item.unitLabel + '</td>'
+      + '<td class="q-code">' + escapeHtml(item.code) + '</td>'
+      + '<td>' + escapeHtml(item.name) + '</td>'
+      + '<td>' + escapeHtml(item.size) + '</td>'
+      + '<td>' + escapeHtml(item.unitLabel) + '</td>'
       + '<td class="tr">' + fmtFull(rate) + '</td>'
       + '<td class="tr">' + item.qty + '</td>'
       + '<td class="tr">' + totalPcs.toLocaleString('en-IN') + ' ' + (isPipe ? 'pipes' : 'pcs') + '</td>'
@@ -692,8 +699,8 @@ function openQuote() {
   var dealerInfo = '';
   if (userData) {
     dealerInfo = '<div class="quote-dealer">'
-      + '<div><strong>Dealer:</strong> ' + (userData.company_name || '') + '</div>'
-      + '<div>' + (userData.contact_name || '') + ' &bull; ' + (userData.phone || '') + '</div>'
+      + '<div><strong>Dealer:</strong> ' + escapeHtml(userData.company_name) + '</div>'
+      + '<div>' + escapeHtml(userData.contact_name) + ' &bull; ' + escapeHtml(userData.phone) + '</div>'
       + '</div>';
   }
 
@@ -772,9 +779,9 @@ function getOrderFormHTML() {
     var isPipe = i.category === 'pipes';
     var rate   = i.ratePerUnit;
     return '<div class="order-item-preview">'
-      + '<span class="oip-code">' + i.code + '</span>'
-      + '<span class="oip-name">' + i.name + ' ' + i.size + '</span>'
-      + '<span class="oip-unit">' + i.unitLabel + ' \u00D7 ' + i.qty + '</span>'
+      + '<span class="oip-code">' + escapeHtml(i.code) + '</span>'
+      + '<span class="oip-name">' + escapeHtml(i.name) + ' ' + escapeHtml(i.size) + '</span>'
+      + '<span class="oip-unit">' + escapeHtml(i.unitLabel) + ' \u00D7 ' + i.qty + '</span>'
       + '<span class="oip-total">' + n.toLocaleString('en-IN') + ' ' + (isPipe?'pipes':'pcs') + ' \u00B7 ' + fmtFull(rate*i.qty) + '</span>'
       + '</div>';
   }).join('');
@@ -846,7 +853,7 @@ function submitOrder(e) {
     var summaryLines = cart.map(function(i) {
       var n = (i.pcsPerUnit * i.qty).toLocaleString('en-IN');
       var isPipe = i.category === 'pipes';
-      return i.code + ' \u2013 ' + i.name + ' ' + i.size + ' | ' + i.unitLabel + ' \u00D7 ' + i.qty + ' = ' + n + ' ' + (isPipe?'pipes':'pcs') + ' | ' + fmtFull(i.ratePerUnit*i.qty);
+      return escapeHtml(i.code) + ' \u2013 ' + escapeHtml(i.name) + ' ' + escapeHtml(i.size) + ' | ' + escapeHtml(i.unitLabel) + ' \u00D7 ' + i.qty + ' = ' + n + ' ' + (isPipe?'pipes':'pcs') + ' | ' + fmtFull(i.ratePerUnit*i.qty);
     }).join('<br>');
 
     e.target.closest('.modal-body').innerHTML =
@@ -884,6 +891,7 @@ function closeOrderSuccess() {
 // ─── LOGOUT ──────────────────────────────────────────────────────────────────────
 
 function handleLogout() {
+  localStorage.removeItem('wf_cart');
   fetch('/api/auth/logout', { method: 'POST' })
     .then(function() { window.location.href = '/login.html'; })
     .catch(function() { window.location.href = '/login.html'; });

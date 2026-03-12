@@ -5,14 +5,50 @@ const router = express.Router();
 // POST /api/orders — create order from cart
 router.post('/', requireAuth, (req, res) => {
   const db = req.app.get('db');
-  const { items, brand_id, notes, discount_percent } = req.body;
+  const { items, brand_id, notes } = req.body;
 
-  if (!items || !items.length) {
+  if (!items || !Array.isArray(items) || !items.length) {
     return res.status(400).json({ error: 'Order must have at least one item' });
   }
 
   if (!brand_id) {
     return res.status(400).json({ error: 'Brand ID required' });
+  }
+
+  // Validate brand exists
+  const brand = db.prepare('SELECT id FROM brands WHERE id = ? AND active = 1').get(brand_id);
+  if (!brand) {
+    return res.status(400).json({ error: 'Invalid brand' });
+  }
+
+  // Validate user has access to this brand
+  const brandAccess = db.prepare('SELECT 1 FROM user_brands WHERE user_id = ? AND brand_id = ?').get(req.user.id, brand_id);
+  if (!brandAccess) {
+    return res.status(403).json({ error: 'No access to this brand' });
+  }
+
+  // Validate each item
+  for (const item of items) {
+    if (!item.code || !item.name || !item.size) {
+      return res.status(400).json({ error: 'Each item must have code, name, and size' });
+    }
+    if (!Number.isInteger(item.qty) || item.qty <= 0) {
+      return res.status(400).json({ error: 'Quantity must be a positive integer' });
+    }
+    if (typeof item.rate_per_unit !== 'number' || item.rate_per_unit < 0) {
+      return res.status(400).json({ error: 'Rate per unit must be a non-negative number' });
+    }
+    if (!Number.isInteger(item.pcs_per_unit) || item.pcs_per_unit <= 0) {
+      return res.status(400).json({ error: 'Pieces per unit must be a positive integer' });
+    }
+
+    // Validate product_id belongs to the brand if provided
+    if (item.product_id) {
+      const product = db.prepare('SELECT id FROM products WHERE id = ? AND brand_id = ? AND active = 1').get(item.product_id, brand_id);
+      if (!product) {
+        return res.status(400).json({ error: `Product ID ${item.product_id} is not valid for this brand` });
+      }
+    }
   }
 
   // Generate order number: WF-YYYYMMDD-XXXX

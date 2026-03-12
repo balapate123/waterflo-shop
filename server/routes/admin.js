@@ -118,8 +118,17 @@ router.put('/users/:id', (req, res) => {
   const updates = [];
   const params = [];
 
-  if (status !== undefined) { updates.push('status = ?'); params.push(status); }
-  if (discount_percent !== undefined) { updates.push('discount_percent = ?'); params.push(discount_percent); }
+  if (status !== undefined) {
+    const validStatuses = ['pending', 'approved', 'suspended'];
+    if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    updates.push('status = ?'); params.push(status);
+  }
+  if (discount_percent !== undefined) {
+    if (typeof discount_percent !== 'number' || discount_percent < 0 || discount_percent > 100) {
+      return res.status(400).json({ error: 'Discount must be between 0 and 100' });
+    }
+    updates.push('discount_percent = ?'); params.push(discount_percent);
+  }
   if (role !== undefined) { updates.push('role = ?'); params.push(role); }
   if (company_name !== undefined) { updates.push('company_name = ?'); params.push(company_name.trim()); }
   if (contact_name !== undefined) { updates.push('contact_name = ?'); params.push(contact_name.trim()); }
@@ -260,10 +269,87 @@ router.put('/orders/:id', (req, res) => {
   const validStatuses = ['pending', 'confirmed', 'dispatched', 'delivered', 'cancelled'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-  const result = db.prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, req.params.id);
+  const result = db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Order not found' });
 
   res.json({ message: 'Order status updated' });
+});
+
+// PUT /api/admin/orders/:id/edit — edit order items (admin)
+router.put('/orders/:id/edit', (req, res) => {
+  const db = req.app.get('db');
+  const orderId = req.params.id;
+  const { items, notes } = req.body;
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+
+  if (!items || !Array.isArray(items) || !items.length) {
+    return res.status(400).json({ error: 'Order must have at least one item' });
+  }
+
+  // Validate each item
+  for (const item of items) {
+    if (!item.code || !item.name || !item.size) {
+      return res.status(400).json({ error: 'Each item must have code, name, and size' });
+    }
+    if (!Number.isInteger(item.qty) || item.qty <= 0) {
+      return res.status(400).json({ error: 'Quantity must be a positive integer' });
+    }
+    if (typeof item.rate_per_unit !== 'number' || item.rate_per_unit < 0) {
+      return res.status(400).json({ error: 'Rate per unit must be a non-negative number' });
+    }
+    if (!Number.isInteger(item.pcs_per_unit) || item.pcs_per_unit <= 0) {
+      return res.status(400).json({ error: 'Pieces per unit must be a positive integer' });
+    }
+  }
+
+  // Calculate new totals
+  let totalAmount = 0;
+  for (const item of items) {
+    totalAmount += (item.rate_per_unit || 0) * (item.qty || 0);
+  }
+  const discPct = order.discount_percent || 0;
+  const discountAmt = discPct > 0 ? Math.round(totalAmount * discPct / 100 * 100) / 100 : 0;
+  const netAmount = totalAmount - discountAmt;
+
+  try {
+    const editOrder = db.transaction(() => {
+      // Delete existing items
+      db.prepare('DELETE FROM order_items WHERE order_id = ?').run(orderId);
+
+      // Insert updated items
+      const insertItem = db.prepare(`
+        INSERT INTO order_items (order_id, product_id, code, name, size, unit_type, unit_label, pcs_per_unit, rate_per_unit, qty)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const item of items) {
+        insertItem.run(
+          orderId,
+          item.product_id || null,
+          item.code,
+          item.name,
+          item.size,
+          item.unit_type || '',
+          item.unit_label || '',
+          item.pcs_per_unit,
+          item.rate_per_unit,
+          item.qty
+        );
+      }
+
+      // Update order totals and notes
+      db.prepare(`
+        UPDATE orders SET total_amount = ?, net_amount = ?, notes = ? WHERE id = ?
+      `).run(totalAmount, netAmount, notes !== undefined ? notes : order.notes, orderId);
+    });
+
+    editOrder();
+    res.json({ message: 'Order updated', total_amount: totalAmount, net_amount: netAmount });
+  } catch (err) {
+    console.error('Order edit error:', err);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
 });
 
 // ─── PRODUCTS ───────────────────────────────────────────────────────────────
@@ -334,8 +420,14 @@ router.put('/products/:id', (req, res) => {
   const p = req.body;
   const productId = req.params.id;
 
-  const existing = db.prepare('SELECT id FROM products WHERE id = ?').get(productId);
+  const existing = db.prepare('SELECT id, brand_id FROM products WHERE id = ?').get(productId);
   if (!existing) return res.status(404).json({ error: 'Product not found' });
+
+  // Check for duplicate code within brand (exclude own ID)
+  if (p.code !== undefined) {
+    const duplicate = db.prepare('SELECT id FROM products WHERE brand_id = ? AND code = ? AND id != ?').get(existing.brand_id, p.code, productId);
+    if (duplicate) return res.status(409).json({ error: 'Product code already exists for this brand' });
+  }
 
   const fields = ['code', 'name', 'category', 'subcategory', 'size', 'size_mm', 'standard',
     'rate', 'unit', 'std_pkg', 'qty_box', 'qty_bundle', 'rate_3mtr', 'rate_5mtr',
@@ -373,6 +465,10 @@ router.post('/products/bulk-price', (req, res) => {
 
   if (!brand_id || percent_change === undefined) {
     return res.status(400).json({ error: 'brand_id and percent_change required' });
+  }
+
+  if (typeof percent_change !== 'number' || percent_change < -50 || percent_change > 50) {
+    return res.status(400).json({ error: 'Price change must be between -50% and +50%' });
   }
 
   const factor = 1 + (percent_change / 100);

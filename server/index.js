@@ -2,13 +2,30 @@ const express = require('express');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const Database = require('better-sqlite3');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
 
-// Database setup
+// ─── Startup Validation ────────────────────────────────────────────────────────
+
+if (isProd && !process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET environment variable is required in production.');
+  process.exit(1);
+}
+
+if (isProd && process.env.SESSION_SECRET && process.env.SESSION_SECRET.length < 32) {
+  console.error('FATAL: SESSION_SECRET must be at least 32 characters.');
+  process.exit(1);
+}
+
+// ─── Database setup ────────────────────────────────────────────────────────────
+
 const DB_PATH = path.join(__dirname, 'db', 'waterflo.db');
 if (!fs.existsSync(DB_PATH)) {
   console.error('Database not found. Run "npm run seed" first.');
@@ -33,50 +50,98 @@ try {
 } catch (e) {
   db.exec("ALTER TABLE orders ADD COLUMN discount_percent REAL DEFAULT 0");
   db.exec("ALTER TABLE orders ADD COLUMN net_amount REAL DEFAULT 0");
-  // Backfill: for existing orders, net_amount = total_amount (no discount was stored)
   db.exec("UPDATE orders SET net_amount = total_amount WHERE net_amount = 0 OR net_amount IS NULL");
   console.log('Migration: added discount_percent and net_amount to orders table');
 }
 
+// Database hardening: add missing indexes and triggers
+try {
+  db.exec("CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)");
+  db.exec(`CREATE TRIGGER IF NOT EXISTS trg_orders_updated_at
+    AFTER UPDATE ON orders
+    BEGIN
+      UPDATE orders SET updated_at = datetime('now') WHERE id = NEW.id;
+    END`);
+} catch (e) { /* already exists */ }
+
 app.set('db', db);
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ─── Security Headers (helmet) ─────────────────────────────────────────────────
 
-// Session
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ─── Request Logging ───────────────────────────────────────────────────────────
+
+app.use(morgan(isProd ? 'combined' : 'dev'));
+
+// ─── Body Parsing ──────────────────────────────────────────────────────────────
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ─── Rate Limiting ─────────────────────────────────────────────────────────────
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: { error: 'Too many attempts. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// ─── Session ───────────────────────────────────────────────────────────────────
+
 app.use(session({
   store: new SQLiteStore({
     dir: path.join(__dirname, 'db'),
     db: 'sessions.db'
   }),
-  secret: process.env.SESSION_SECRET || 'waterflo-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'waterflo-dev-secret-not-for-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 8 * 60 * 60 * 1000, // 8 hours
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    secure: isProd
   }
 }));
 
-// Auth gate: protect HTML pages (except login.html and static assets)
+// ─── Trust proxy (for rate limiting behind nginx/cloudflare) ────────────────────
+
+if (isProd) {
+  app.set('trust proxy', 1);
+}
+
+// ─── Auth Gate ─────────────────────────────────────────────────────────────────
+
 app.use((req, res, next) => {
-  // Allow API routes to pass through (handled by route-level middleware)
   if (req.path.startsWith('/api/')) return next();
-
-  // Allow static assets (css, js, images, fonts)
   if (req.path.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$/)) return next();
-
-  // Allow login page
   if (req.path === '/login.html' || req.path === '/login') return next();
 
-  // For all other pages, check auth
   if (!req.session || !req.session.userId) {
     return res.redirect('/login.html');
   }
 
-  // Check user is approved
   const user = db.prepare('SELECT status FROM users WHERE id = ?').get(req.session.userId);
   if (!user || user.status !== 'approved') {
     req.session.destroy();
@@ -86,15 +151,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// ─── Static Files ──────────────────────────────────────────────────────────────
 
-// Serve static files from project root
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.use(express.static(path.join(__dirname, '..'), {
-  index: false // Don't auto-serve index.html, let the auth gate handle it
+  index: false
 }));
 
-// Explicitly handle / and /index.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
@@ -103,20 +166,70 @@ app.get('/index.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
-// API Routes
+// ─── Health Check ──────────────────────────────────────────────────────────────
+
+app.get('/api/health', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok', uptime: process.uptime() });
+  } catch (e) {
+    res.status(503).json({ status: 'error', message: 'Database unavailable' });
+  }
+});
+
+// ─── API Routes ────────────────────────────────────────────────────────────────
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/brands', require('./routes/brands'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/admin', require('./routes/admin'));
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Waterflo server running on http://localhost:${PORT}`);
-  console.log(`Login: http://localhost:${PORT}/login.html`);
+// ─── 404 Handler ───────────────────────────────────────────────────────────────
+
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Endpoint not found' });
+  }
+  res.status(404).send('Page not found');
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  db.close();
-  process.exit(0);
+// ─── Global Error Handler ──────────────────────────────────────────────────────
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    error: isProd ? 'Internal server error' : err.message
+  });
 });
+
+// ─── Start Server ──────────────────────────────────────────────────────────────
+
+const server = app.listen(PORT, () => {
+  console.log(`Waterflo server running on http://localhost:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please choose a different port or stop the existing process.`);
+    process.exit(1);
+  }
+  throw err;
+});
+
+// ─── Graceful Shutdown ─────────────────────────────────────────────────────────
+
+function shutdown() {
+  console.log('Shutting down gracefully...');
+  server.close(() => {
+    db.close();
+    process.exit(0);
+  });
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    db.close();
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

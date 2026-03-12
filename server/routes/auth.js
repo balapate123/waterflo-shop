@@ -10,8 +10,8 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'All required fields must be provided' });
   }
 
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
 
   const db = req.app.get('db');
@@ -57,6 +57,8 @@ router.post('/login', async (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
 
   if (!user) {
+    // Dummy bcrypt compare to prevent timing-based user enumeration
+    await bcrypt.compare(password, '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012');
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 

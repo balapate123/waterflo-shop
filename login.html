@@ -166,13 +166,13 @@
 
   <div class="auth-card">
     <div class="auth-tabs">
-      <button class="auth-tab active" onclick="showTab('login')">Login</button>
-      <button class="auth-tab" onclick="showTab('register')">Register</button>
+      <button class="auth-tab active" id="tabLogin">Login</button>
+      <button class="auth-tab" id="tabRegister">Register</button>
     </div>
 
     <div class="auth-form-wrap">
       <!-- LOGIN FORM -->
-      <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+      <form class="auth-form active" id="loginForm">
         <div class="auth-error" id="loginError"></div>
         <div class="auth-field">
           <label>Email</label>
@@ -186,7 +186,7 @@
       </form>
 
       <!-- REGISTER FORM -->
-      <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+      <form class="auth-form" id="registerForm">
         <div class="auth-error" id="registerError"></div>
         <div class="auth-success" id="registerSuccess"></div>
         <div class="auth-field">
@@ -206,8 +206,8 @@
           <input type="email" name="email" placeholder="your@email.com" required autocomplete="email">
         </div>
         <div class="auth-field">
-          <label>Password * (min 6 characters)</label>
-          <input type="password" name="password" placeholder="Create a password" required minlength="6" autocomplete="new-password">
+          <label>Password * (min 8 characters)</label>
+          <input type="password" name="password" placeholder="Create a password" required minlength="8" autocomplete="new-password">
         </div>
         <div class="auth-field">
           <label>Address</label>
@@ -227,6 +227,12 @@
     fetch('/api/auth/me').then(r => {
       if (r.ok) window.location.href = '/index.html';
     });
+
+    // Bind event listeners (CSP blocks inline handlers)
+    document.getElementById('tabLogin').addEventListener('click', () => showTab('login'));
+    document.getElementById('tabRegister').addEventListener('click', () => showTab('register'));
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    document.getElementById('registerForm').addEventListener('submit', handleRegister);
 
     function showTab(tab) {
       document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));

@@ -174,6 +174,7 @@
       <div class="modal-header">
         <h2 id="orderDetailTitle">Order Details</h2>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-sm btn-edit" id="editOrderBtn" onclick="startEditOrder()" style="background:#1565c0">&#x270F; Edit</button>
           <button class="btn-sm btn-edit" onclick="printOrderForm()" style="background:#bf360c">&#x1F4CB; Order Form</button>
           <button class="btn-sm btn-edit" onclick="printOrderDetail()" style="background:#00695c">&#x1F5A8; Print</button>
           <button onclick="closeModal('orderDetailModal')" style="background:none;border:none;color:white;font-size:1.4rem;cursor:pointer">&times;</button>
@@ -404,7 +405,14 @@
     </div>
   </div>
 
+  <script src="js/order-forms.js"></script>
   <script>
+    // ═══ HTML ESCAPING ═══
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     // ═══ GLOBALS ═══
     var allBrands = [];
     var currentUser = null;
@@ -488,7 +496,7 @@
         var isFilter = id.includes('Filter');
         var html = isFilter ? '<option value="">All Brands</option>' : '';
         allBrands.forEach(function(b) {
-          html += '<option value="' + b.id + '">' + (b.short_name || b.name) + '</option>';
+          html += '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.short_name || b.name) + '</option>';
         });
         el.innerHTML = html;
       });
@@ -522,7 +530,7 @@
       document.getElementById('brandStatsBody').innerHTML = d.brandStats.map(function(b) {
         return '<div class="brand-stat-row">'
           + '<span class="brand-stat-dot" style="background:' + (b.color || '#607d8b') + '"></span>'
-          + '<span class="brand-stat-name">' + b.name + '</span>'
+          + '<span class="brand-stat-name">' + escapeHtml(b.name) + '</span>'
           + '<span class="brand-stat-val">' + b.product_count + ' products</span>'
           + '<span class="brand-stat-val">' + b.order_count + ' orders</span>'
           + '</div>';
@@ -534,7 +542,7 @@
       } else {
         document.getElementById('recentOrdersBody').innerHTML = '<table class="admin-table compact"><thead><tr><th>Order</th><th>Dealer</th><th>Brand</th><th>Total</th><th>Status</th></tr></thead><tbody>'
           + d.recentOrders.map(function(o) {
-            return '<tr><td>' + o.order_no + '</td><td>' + (o.company_name || o.contact_name) + '</td><td>' + (o.brand_name || '') + '</td><td>' + fmt(o.total_amount) + '</td><td>' + statusBadge(o.status) + '</td></tr>';
+            return '<tr><td>' + escapeHtml(o.order_no) + '</td><td>' + escapeHtml(o.company_name || o.contact_name) + '</td><td>' + escapeHtml(o.brand_name) + '</td><td>' + fmt(o.total_amount) + '</td><td>' + statusBadge(o.status) + '</td></tr>';
           }).join('')
           + '</tbody></table>';
       }
@@ -564,7 +572,7 @@
 
       document.getElementById('usersBody').innerHTML = data.users.map(function(u) {
         var brandTags = u.brands.map(function(b) {
-          return '<span class="mini-tag">' + b.name + '</span>';
+          return '<span class="mini-tag">' + escapeHtml(b.name) + '</span>';
         }).join(' ');
 
         var actions = '';
@@ -581,14 +589,14 @@
         actions += '<button class="btn-sm btn-edit" onclick="editUserBrands(' + u.id + ')">Brands</button> ';
         actions += '<button class="btn-sm btn-edit" onclick="viewUserOrders(' + u.id + ')" style="background:#00695c">Orders</button> ';
         if (u.role !== 'admin') {
-          actions += '<button class="btn-sm btn-suspend" onclick="deleteUser(' + u.id + ',\'' + u.company_name.replace(/'/g, "\\'") + '\')">Delete</button>';
+          actions += '<button class="btn-sm btn-suspend" onclick="deleteUser(' + u.id + ',this)" data-name="' + escapeHtml(u.company_name) + '">Delete</button>';
         }
 
         return '<tr style="cursor:pointer" onclick="viewUserOrders(' + u.id + ')">'
-          + '<td><strong>' + u.company_name + '</strong></td>'
-          + '<td>' + u.contact_name + '</td>'
-          + '<td>' + u.phone + '</td>'
-          + '<td class="email-cell">' + u.email + '</td>'
+          + '<td><strong>' + escapeHtml(u.company_name) + '</strong></td>'
+          + '<td>' + escapeHtml(u.contact_name) + '</td>'
+          + '<td>' + escapeHtml(u.phone) + '</td>'
+          + '<td class="email-cell">' + escapeHtml(u.email) + '</td>'
           + '<td>' + statusBadge(u.status) + '</td>'
           + '<td>' + u.discount_percent + '%</td>'
           + '<td class="brands-cell">' + brandTags + '</td>'
@@ -636,7 +644,8 @@
       } else alert(r.data.error);
     }
 
-    async function deleteUser(id, name) {
+    async function deleteUser(id, btn) {
+      var name = btn.getAttribute('data-name');
       if (!confirm('Delete user "' + name + '" and all their orders? This cannot be undone.')) return;
       var res = await fetch('/api/admin/users/' + id, { method: 'DELETE' });
       var data = await res.json();
@@ -656,10 +665,10 @@
       if (orders.length === 0) {
         document.getElementById('userOrdersBody').innerHTML =
           '<div class="order-info-grid" style="grid-template-columns:1fr 1fr">'
-          + '<div><strong>Company:</strong> ' + u.company_name + '</div>'
-          + '<div><strong>Contact:</strong> ' + u.contact_name + '</div>'
-          + '<div><strong>Phone:</strong> ' + u.phone + '</div>'
-          + '<div><strong>Email:</strong> ' + u.email + '</div>'
+          + '<div><strong>Company:</strong> ' + escapeHtml(u.company_name) + '</div>'
+          + '<div><strong>Contact:</strong> ' + escapeHtml(u.contact_name) + '</div>'
+          + '<div><strong>Phone:</strong> ' + escapeHtml(u.phone) + '</div>'
+          + '<div><strong>Email:</strong> ' + escapeHtml(u.email) + '</div>'
           + '<div><strong>Discount:</strong> ' + u.discount_percent + '%</div>'
           + '</div>'
           + '<p class="empty-text">No orders found for this user</p>';
@@ -668,25 +677,25 @@
       }
 
       var html = '<div class="order-info-grid" style="grid-template-columns:1fr 1fr">'
-        + '<div><strong>Company:</strong> ' + u.company_name + '</div>'
-        + '<div><strong>Contact:</strong> ' + u.contact_name + '</div>'
-        + '<div><strong>Phone:</strong> ' + u.phone + '</div>'
+        + '<div><strong>Company:</strong> ' + escapeHtml(u.company_name) + '</div>'
+        + '<div><strong>Contact:</strong> ' + escapeHtml(u.contact_name) + '</div>'
+        + '<div><strong>Phone:</strong> ' + escapeHtml(u.phone) + '</div>'
         + '<div><strong>Discount:</strong> ' + u.discount_percent + '%</div>'
         + '</div>';
 
       html += '<div style="margin-top:16px">';
       orders.forEach(function(o) {
         var itemRows = o.items.map(function(it) {
-          return '<tr><td>' + it.code + '</td><td>' + it.name + '</td><td>' + it.size + '</td>'
-            + '<td>' + it.unit_label + '</td><td>' + fmt(it.rate_per_unit) + '</td>'
+          return '<tr><td>' + escapeHtml(it.code) + '</td><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.size) + '</td>'
+            + '<td>' + escapeHtml(it.unit_label) + '</td><td>' + fmt(it.rate_per_unit) + '</td>'
             + '<td>' + it.qty + '</td><td>' + fmt(it.rate_per_unit * it.qty) + '</td></tr>';
         }).join('');
 
         html += '<div class="user-order-card">'
           + '<div class="user-order-header">'
           +   '<div>'
-          +     '<strong>' + o.order_no + '</strong>'
-          +     ' <span class="mini-tag" style="background:' + (o.brand_color || '#607d8b') + ';color:white">' + (o.brand_short_name || '') + '</span> '
+          +     '<strong>' + escapeHtml(o.order_no) + '</strong>'
+          +     ' <span class="mini-tag" style="background:' + (o.brand_color || '#607d8b') + ';color:white">' + escapeHtml(o.brand_short_name) + '</span> '
           +     statusBadge(o.status)
           +   '</div>'
           +   '<div>'
@@ -726,10 +735,10 @@
         var pcs = it.pcs_per_unit * it.qty;
         return '<tr>'
           + '<td style="text-align:center">' + (i + 1) + '</td>'
-          + '<td style="font-family:monospace;font-size:0.75rem">' + it.code + '</td>'
-          + '<td>' + it.name + '</td>'
-          + '<td style="text-align:center">' + it.size + '</td>'
-          + '<td>' + it.unit_label + '</td>'
+          + '<td style="font-family:monospace;font-size:0.75rem">' + escapeHtml(it.code) + '</td>'
+          + '<td>' + escapeHtml(it.name) + '</td>'
+          + '<td style="text-align:center">' + escapeHtml(it.size) + '</td>'
+          + '<td>' + escapeHtml(it.unit_label) + '</td>'
           + '<td style="text-align:right">' + fmt(it.rate_per_unit) + '</td>'
           + '<td style="text-align:center">' + it.qty + '</td>'
           + '<td style="text-align:center">' + pcs.toLocaleString('en-IN') + '</td>'
@@ -740,7 +749,7 @@
       var discAmt = discPct > 0 ? Math.round(itemsTotal * discPct / 100 * 100) / 100 : 0;
       var netAmt = o.net_amount || (itemsTotal - discAmt);
 
-      var invoiceHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ' + o.order_no + '</title>'
+      var invoiceHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ' + escapeHtml(o.order_no) + '</title>'
         + '<style>'
         + 'body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;margin:0;padding:24px;color:#1a1a2e;font-size:13px}'
         + '.inv-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a237e;padding-bottom:16px;margin-bottom:16px}'
@@ -760,19 +769,19 @@
         + '</style></head><body>'
         + '<div class="inv-header">'
         +   '<div><div class="inv-brand">Water<span>flo</span>&reg;</div>'
-        +   '<div style="font-size:0.8rem;color:#546e7a">Pipes &amp; Fittings \u2014 ' + (o.brand_name || '') + '</div>'
+        +   '<div style="font-size:0.8rem;color:#546e7a">Pipes &amp; Fittings \u2014 ' + escapeHtml(o.brand_name) + '</div>'
         +   '<div style="font-size:0.72rem;color:#546e7a">www.waterflo.in' + (priceDate ? ' \u00B7 w.e.f. ' + priceDate : '') + '</div>'
         +   '</div>'
         +   '<div class="inv-meta">'
-        +     '<div><strong>Invoice No:</strong> ' + o.order_no + '</div>'
+        +     '<div><strong>Invoice No:</strong> ' + escapeHtml(o.order_no) + '</div>'
         +     '<div><strong>Date:</strong> ' + fmtDate(o.created_at) + '</div>'
         +     '<div><strong>Status:</strong> ' + o.status.toUpperCase() + '</div>'
         +     (discPct > 0 ? '<div><span class="disc-badge">Discount: ' + discPct + '%</span></div>' : '')
         +   '</div>'
         + '</div>'
         + '<div class="inv-info">'
-        +   '<div><strong>Bill To:</strong><br><strong>' + (o.company_name || '') + '</strong><br>' + (o.contact_name || '') + '<br>' + (o.phone || '') + '<br>' + (o.email || '') + (o.address ? '<br>' + o.address : '') + '</div>'
-        +   '<div style="text-align:right"><strong>Brand:</strong> ' + (o.brand_name || '') + (o.notes ? '<br><br><strong>Notes:</strong> ' + o.notes : '') + '</div>'
+        +   '<div><strong>Bill To:</strong><br><strong>' + escapeHtml(o.company_name) + '</strong><br>' + escapeHtml(o.contact_name) + '<br>' + escapeHtml(o.phone) + '<br>' + escapeHtml(o.email) + (o.address ? '<br>' + escapeHtml(o.address) : '') + '</div>'
+        +   '<div style="text-align:right"><strong>Brand:</strong> ' + escapeHtml(o.brand_name) + (o.notes ? '<br><br><strong>Notes:</strong> ' + escapeHtml(o.notes) : '') + '</div>'
         + '</div>'
         + '<table><thead><tr><th style="text-align:center">#</th><th>Code</th><th>Product</th><th style="text-align:center">Size</th><th>Unit</th><th style="text-align:right">Rate/Unit</th><th style="text-align:center">Units</th><th style="text-align:center">Total Pcs</th><th style="text-align:right">Amount</th></tr></thead>'
         + '<tbody>' + itemRows + '</tbody>'
@@ -809,11 +818,11 @@
 
       var userBrandIds = user.brands.map(function(b) { return b.id; });
 
-      var html = '<p style="margin-bottom:12px"><strong>' + user.company_name + '</strong></p>';
+      var html = '<p style="margin-bottom:12px"><strong>' + escapeHtml(user.company_name) + '</strong></p>';
       html += '<form id="userBrandsForm" onsubmit="saveUserBrands(event,' + userId + ')">';
       allBrands.forEach(function(b) {
         var checked = userBrandIds.includes(b.id) ? ' checked' : '';
-        html += '<label class="checkbox-row"><input type="checkbox" name="brands" value="' + b.id + '"' + checked + '> ' + (b.short_name || b.name) + '</label>';
+        html += '<label class="checkbox-row"><input type="checkbox" name="brands" value="' + escapeHtml(b.id) + '"' + checked + '> ' + escapeHtml(b.short_name || b.name) + '</label>';
       });
       html += '<button type="submit" class="btn-admin-primary" style="width:100%;margin-top:12px">Save</button>';
       html += '</form>';
@@ -852,10 +861,10 @@
 
       document.getElementById('ordersBody').innerHTML = data.orders.map(function(o) {
         return '<tr>'
-          + '<td><strong>' + o.order_no + '</strong></td>'
+          + '<td><strong>' + escapeHtml(o.order_no) + '</strong></td>'
           + '<td>' + fmtDate(o.created_at) + '</td>'
-          + '<td>' + (o.company_name || o.contact_name || '') + '</td>'
-          + '<td><span class="mini-tag" style="background:' + (o.brand_color || '#607d8b') + ';color:white">' + (o.brand_short_name || '') + '</span></td>'
+          + '<td>' + escapeHtml(o.company_name || o.contact_name) + '</td>'
+          + '<td><span class="mini-tag" style="background:' + (o.brand_color || '#607d8b') + ';color:white">' + escapeHtml(o.brand_short_name) + '</span></td>'
           + '<td>' + fmt(o.total_amount) + '</td>'
           + '<td>' + statusBadge(o.status) + '</td>'
           + '<td class="actions-cell">'
@@ -894,10 +903,10 @@
         itemsTotal += amount;
         return '<tr>'
           + '<td style="text-align:center">' + (i + 1) + '</td>'
-          + '<td style="font-family:monospace;font-size:0.75rem">' + it.code + '</td>'
-          + '<td>' + it.name + '</td>'
-          + '<td style="text-align:center">' + it.size + '</td>'
-          + '<td>' + it.unit_label + '</td>'
+          + '<td style="font-family:monospace;font-size:0.75rem">' + escapeHtml(it.code) + '</td>'
+          + '<td>' + escapeHtml(it.name) + '</td>'
+          + '<td style="text-align:center">' + escapeHtml(it.size) + '</td>'
+          + '<td>' + escapeHtml(it.unit_label) + '</td>'
           + '<td style="text-align:right">' + fmt(it.rate_per_unit) + '</td>'
           + '<td style="text-align:center">' + it.qty + '</td>'
           + '<td style="text-align:center">' + totalPcs.toLocaleString('en-IN') + '</td>'
@@ -910,12 +919,12 @@
         // Header
         '<div class="inv-header-admin">'
         + '<div>'
-        +   '<div class="inv-brand-admin">Waterflo<span>\u00AE</span> \u2014 ' + brandName + '</div>'
+        +   '<div class="inv-brand-admin">Waterflo<span>\u00AE</span> \u2014 ' + escapeHtml(brandName) + '</div>'
         +   '<div style="font-size:0.78rem;color:#546e7a">Pipes &amp; Fittings \u2014 Always Ahead in Quality</div>'
         +   '<div style="font-size:0.72rem;color:#546e7a">www.waterflo.in' + (priceDate ? ' \u00B7 w.e.f. ' + priceDate : '') + '</div>'
         + '</div>'
         + '<div style="text-align:right;font-size:0.82rem;line-height:1.8">'
-        +   '<div><strong>Order No:</strong> ' + o.order_no + '</div>'
+        +   '<div><strong>Order No:</strong> ' + escapeHtml(o.order_no) + '</div>'
         +   '<div><strong>Date:</strong> ' + fmtDate(o.created_at) + '</div>'
         +   '<div><strong>Status:</strong> ' + statusBadge(o.status) + '</div>'
         +   (discPct > 0 ? '<div style="color:#2e7d32;font-weight:700">Discount: ' + discPct + '%</div>' : '')
@@ -924,10 +933,10 @@
         // Dealer info
         + '<div class="inv-dealer-admin">'
         +   '<div><strong>Bill To:</strong></div>'
-        +   '<div><strong>' + (o.company_name || '') + '</strong></div>'
-        +   '<div>' + (o.contact_name || '') + '</div>'
-        +   '<div>' + (o.phone || '') + (o.email ? ' \u00B7 ' + o.email : '') + '</div>'
-        +   (o.address ? '<div>' + o.address + '</div>' : '')
+        +   '<div><strong>' + escapeHtml(o.company_name) + '</strong></div>'
+        +   '<div>' + escapeHtml(o.contact_name) + '</div>'
+        +   '<div>' + escapeHtml(o.phone) + (o.email ? ' \u00B7 ' + escapeHtml(o.email) : '') + '</div>'
+        +   (o.address ? '<div>' + escapeHtml(o.address) + '</div>' : '')
         + '</div>'
         // Items table
         + '<div style="overflow-x:auto;margin:12px 0">'
@@ -945,7 +954,7 @@
         + '</table>'
         + '</div>'
         // Notes
-        + (o.notes ? '<div style="background:#f5f5f5;border-radius:8px;padding:10px;font-size:0.82rem;margin-bottom:8px"><strong>Notes:</strong> ' + o.notes + '</div>' : '')
+        + (o.notes ? '<div style="background:#f5f5f5;border-radius:8px;padding:10px;font-size:0.82rem;margin-bottom:8px"><strong>Notes:</strong> ' + escapeHtml(o.notes) + '</div>' : '')
         // Footer
         + '<div style="font-size:0.72rem;color:#546e7a;line-height:1.8;border-top:1px solid #e0e0e0;padding-top:8px">'
         +   '<p>\u2022 All rates are per selected unit, exclusive of GST</p>'
@@ -966,272 +975,11 @@
       var o = lastViewedOrder.order;
       var orderItems = lastViewedOrder.items;
 
-      // Fetch all products for this brand
-      var res = await fetch('/api/admin/products?brand_id=' + o.brand_id);
-      if (!res.ok) { alert('Failed to load products'); return; }
-      var data = await res.json();
-      var allProducts = data.products;
-
-      // Build a lookup: code -> order qty
-      var orderQtyByCode = {};
-      orderItems.forEach(function(it) {
-        orderQtyByCode[it.code] = (orderQtyByCode[it.code] || 0) + it.qty;
-      });
-
-      // Group products into sections by category + subcategory
-      // Each section becomes a grid table
-      var sections = {};
-      var sectionOrder = [];
-      allProducts.forEach(function(p) {
-        if (!p.active) return;
-        var key = p.category + '|' + p.subcategory;
-        if (!sections[key]) {
-          sections[key] = { category: p.category, subcategory: p.subcategory, products: [] };
-          sectionOrder.push(key);
-        }
-        sections[key].products.push(p);
-      });
-
-      // Now group sections that share the same size columns into grid tables
-      // Strategy: group by category, then within each category group subcategories
-      // that have the same set of sizes
-      var categoryGroups = {};
-      var catOrder = [];
-      sectionOrder.forEach(function(key) {
-        var sec = sections[key];
-        var cat = sec.category;
-        if (!categoryGroups[cat]) {
-          categoryGroups[cat] = [];
-          catOrder.push(cat);
-        }
-        categoryGroups[cat].push(sec);
-      });
-
-      // For each category, build grid tables grouping subcategories with same sizes
-      var tablesHTML = '';
-      var totalItems = 0;
-      var totalBoxes = 0;
-
-      catOrder.forEach(function(cat) {
-        var secs = categoryGroups[cat];
-
-        // Collect all unique sizes in this category, sorted by size_mm
-        var sizesMap = {};
-        secs.forEach(function(sec) {
-          sec.products.forEach(function(p) {
-            if (!sizesMap[p.size]) sizesMap[p.size] = p.size_mm || 0;
-          });
-        });
-        var sizes = Object.keys(sizesMap).sort(function(a, b) { return sizesMap[a] - sizesMap[b]; });
-
-        // Check if reducers - they have compound sizes like "1"x½"", group differently
-        var isReducer = (cat === 'reducers');
-
-        if (isReducer) {
-          // Group reducers by their "base size" (the larger size in the compound)
-          // e.g., ¾"×½", 1"×½", 1"×¾" — group by first part
-          // Build lookup: subcategory+size -> product
-          var redLookup = {};
-          secs.forEach(function(sec) {
-            sec.products.forEach(function(p) {
-              redLookup[sec.subcategory + '|' + p.size] = p;
-            });
-          });
-
-          // Subcategory names for rows
-          var redSubNames = [];
-          var redSubSeen = {};
-          secs.forEach(function(sec) {
-            if (!redSubSeen[sec.subcategory]) {
-              redSubSeen[sec.subcategory] = true;
-              redSubNames.push({ key: sec.subcategory, name: formatSubcategoryName(sec.subcategory) });
-            }
-          });
-
-          // All reducer sizes sorted
-          tablesHTML += '<table class="of-table"><thead>';
-          tablesHTML += '<tr class="of-cat-row"><th colspan="' + (sizes.length + 1) + '">REDUCERS</th></tr>';
-          tablesHTML += '<tr><th class="of-th-name">RED. SIZE</th>';
-          sizes.forEach(function(s) { tablesHTML += '<th class="of-th-size">' + s + '</th>'; });
-          tablesHTML += '</tr></thead><tbody>';
-
-          redSubNames.forEach(function(sub) {
-            tablesHTML += '<tr><td class="of-td-name">' + sub.name + '</td>';
-            sizes.forEach(function(s) {
-              var p = redLookup[sub.key + '|' + s];
-              if (p) {
-                var qty = orderQtyByCode[p.code] || '';
-                var cls = qty ? ' of-filled' : '';
-                if (qty) { totalItems += qty; totalBoxes += qty; }
-                tablesHTML += '<td class="of-td-qty' + cls + '">' + qty + '</td>';
-              } else {
-                tablesHTML += '<td class="of-td-na">-</td>';
-              }
-            });
-            tablesHTML += '</tr>';
-          });
-
-          tablesHTML += '</tbody></table>';
-        } else {
-          // For non-reducers, rows = subcategory names, columns = sizes
-          // Build lookup: subcategory+size -> product
-          var prodLookup = {};
-          secs.forEach(function(sec) {
-            sec.products.forEach(function(p) {
-              prodLookup[p.subcategory + '|' + p.size] = p;
-            });
-          });
-
-          // Subcategory display names & order
-          var subNames = [];
-          var subSeen = {};
-          secs.forEach(function(sec) {
-            if (!subSeen[sec.subcategory]) {
-              subSeen[sec.subcategory] = true;
-              // Use first product's name as display name
-              var displayName = sec.products[0] ? sec.products[0].name : sec.subcategory;
-              subNames.push({ key: sec.subcategory, name: displayName });
-            }
-          });
-
-          var catTitle = formatCategoryName(cat);
-          tablesHTML += '<table class="of-table"><thead>';
-          tablesHTML += '<tr class="of-cat-row"><th colspan="' + (sizes.length + 1) + '">' + catTitle + '</th></tr>';
-          tablesHTML += '<tr><th class="of-th-name">FITTING SIZE</th>';
-          sizes.forEach(function(s) { tablesHTML += '<th class="of-th-size">' + s + '</th>'; });
-          tablesHTML += '</tr></thead><tbody>';
-
-          subNames.forEach(function(sub) {
-            tablesHTML += '<tr><td class="of-td-name">' + sub.name.toUpperCase() + '</td>';
-            sizes.forEach(function(s) {
-              var p = prodLookup[sub.key + '|' + s];
-              if (p) {
-                var qty = orderQtyByCode[p.code] || '';
-                var cls = qty ? ' of-filled' : '';
-                if (qty) { totalItems += qty; totalBoxes += qty; }
-                tablesHTML += '<td class="of-td-qty' + cls + '">' + qty + '</td>';
-              } else {
-                tablesHTML += '<td class="of-td-na">-</td>';
-              }
-            });
-            tablesHTML += '</tr>';
-          });
-
-          tablesHTML += '</tbody></table>';
-        }
-      });
-
-      // Check for unmatched order items (codes not in product catalog)
-      var allProductCodes = {};
-      allProducts.forEach(function(p) { allProductCodes[p.code] = true; });
-      var unmatchedItems = orderItems.filter(function(it) { return !allProductCodes[it.code]; });
-      if (unmatchedItems.length > 0) {
-        tablesHTML += '<table class="of-table"><thead>';
-        tablesHTML += '<tr class="of-cat-row"><th colspan="5">OTHER ITEMS</th></tr>';
-        tablesHTML += '<tr><th class="of-th-name">Product</th><th class="of-th-size">Code</th><th class="of-th-size">Size</th><th class="of-th-size">Unit</th><th class="of-th-size">Qty</th></tr>';
-        tablesHTML += '</thead><tbody>';
-        unmatchedItems.forEach(function(it) {
-          tablesHTML += '<tr><td class="of-td-name">' + it.name + '</td>';
-          tablesHTML += '<td class="of-td-qty">' + it.code + '</td>';
-          tablesHTML += '<td class="of-td-qty">' + it.size + '</td>';
-          tablesHTML += '<td class="of-td-qty">' + (it.unit_label || '') + '</td>';
-          tablesHTML += '<td class="of-td-qty of-filled">' + it.qty + '</td></tr>';
-          totalItems += it.qty;
-        });
-        tablesHTML += '</tbody></table>';
-      }
-
-      // Build the full HTML
-      var brandName = o.brand_name || '';
-      var brandShort = o.brand_short_name || brandName;
-      var formTitle = brandShort + ' ORDER FORM';
-      var partyName = o.company_name || o.contact_name || '';
-      var orderDate = fmtDate(o.created_at);
-      var state = o.address || '';
-
-      var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-        + '<title>Order Form - ' + o.order_no + '</title>'
-        + '<style>'
-        + '*{margin:0;padding:0;box-sizing:border-box}'
-        + 'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;padding:12px}'
-        + '.of-header{text-align:center;margin-bottom:8px}'
-        + '.of-brand{font-size:16px;font-weight:900}'
-        + '.of-title{font-size:13px;font-weight:700}'
-        + '.of-subtitle{font-size:11px;font-weight:700}'
-        + '.of-meta{display:flex;justify-content:space-between;margin-bottom:8px;font-size:10px;line-height:1.6}'
-        + '.of-meta strong{font-weight:700}'
-        + '.of-meta td{padding:1px 8px 1px 0}'
-        + '.of-table{width:100%;border-collapse:collapse;margin-bottom:6px;page-break-inside:avoid}'
-        + '.of-table th,.of-table td{border:1px solid #000;padding:2px 3px;text-align:center;font-size:9px}'
-        + '.of-th-name{text-align:left;font-weight:700;min-width:90px;font-size:8px;background:#f0f0f0}'
-        + '.of-th-size{font-weight:700;min-width:32px;font-size:8px;background:#f0f0f0}'
-        + '.of-td-name{text-align:left;font-weight:600;font-size:8px;white-space:nowrap}'
-        + '.of-td-qty{min-width:28px;height:16px}'
-        + '.of-td-na{color:#999;font-size:7px}'
-        + '.of-filled{background:#ffffcc;font-weight:700;font-size:11px;color:#b71c1c}'
-        + '.of-cat-row th{background:#e0e0e0;font-weight:700;font-size:10px;text-transform:uppercase;padding:3px}'
-        + '.of-footer{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;font-weight:700;border-top:2px solid #000;padding-top:6px}'
-        + '.of-footer div{margin-right:30px}'
-        + '.of-page-num{text-align:right;font-size:8px;color:#666;margin-top:4px}'
-        + '@media print{body{padding:8px;font-size:10px}.of-table th,.of-table td{font-size:8px;padding:1px 2px}.of-filled{background:#ffffcc !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-        + '@page{size:A4 portrait;margin:10mm}'
-        + '</style></head><body>'
-        + '<div class="of-header">'
-        + '<div class="of-brand">' + brandShort + ' &reg;</div>'
-        + '<div class="of-title">WATERFLO PIPING SYSTEM</div>'
-        + '<div class="of-subtitle">' + formTitle + '</div>'
-        + '</div>'
-        + '<div class="of-meta">'
-        + '<table><tr><td><strong>PARTY NAME:-</strong></td><td>' + partyName + '</td></tr>'
-        + '<tr><td><strong>ORDER DATE:-</strong></td><td>' + orderDate + '</td></tr>'
-        + '<tr><td><strong>ORDER NO:-</strong></td><td>' + o.order_no + '</td></tr></table>'
-        + '<table><tr><td><strong>STATE:-</strong></td><td>' + state + '</td></tr>'
-        + '<tr><td><strong>LORRY NO:-</strong></td><td>_______________</td></tr>'
-        + '<tr><td><strong>DELIVERY:-</strong></td><td>_______________</td></tr></table>'
-        + '</div>'
-        + tablesHTML
-        + '<div class="of-footer">'
-        + '<div>BOX (B):- ____</div>'
-        + '<div>BOX (S):- ____</div>'
-        + '<div>ITEM:- ' + totalItems + '</div>'
-        + '<div>TOTAL WT:- ____</div>'
-        + '</div>'
-        + '<script>window.onload=function(){window.print()}<\/script>'
-        + '</body></html>';
-
+      // Use fixed template generator from order-forms.js
+      var html = window.generateOrderFormPages(o, orderItems);
       var win = window.open('', '_blank');
       win.document.write(html);
       win.document.close();
-    }
-
-    function formatCategoryName(cat) {
-      var names = {
-        pipes: 'PIPES',
-        fittings: 'FITTINGS',
-        reducers: 'REDUCERS',
-        valves: 'VALVES',
-        brass: 'BRASS FITTINGS',
-        accessories: 'ACCESSORIES',
-        fabricated: 'FABRICATED FITTINGS',
-        mixer: 'MIXER ADAPTORS',
-        mixeradaptor: 'MIXER ADAPTORS',
-        solvent: 'SOLVENT & LUBRICANT'
-      };
-      return names[cat] || cat.toUpperCase();
-    }
-
-    function formatSubcategoryName(sub) {
-      var names = {
-        redtee: 'R. TEE',
-        redbush: 'R. BUSH',
-        redcoupler: 'R. COUPLER',
-        redelbow: 'R. ELBOW',
-        redfta: 'R. F.T.A.',
-        redmta: 'R. M.T.A.',
-        red_ss: 'S.S',
-        fourwaytee: 'FOUR WAY TEE'
-      };
-      return names[sub] || sub.replace(/_/g, ' ').toUpperCase();
     }
 
     async function changeOrderStatus(id, status) {
@@ -1239,6 +987,155 @@
       var r = await apiPut('/api/admin/orders/' + id, { status: status });
       if (r.ok) loadOrders();
       else alert(r.data.error);
+    }
+
+    // ═══ ORDER EDITING ═══
+    var editingOrderItems = null;
+
+    function startEditOrder() {
+      if (!lastViewedOrder) return;
+      var o = lastViewedOrder.order;
+      var items = lastViewedOrder.items;
+
+      // Clone items for editing
+      editingOrderItems = items.map(function(it) {
+        return { id: it.id, product_id: it.product_id, code: it.code, name: it.name, size: it.size,
+          unit_type: it.unit_type, unit_label: it.unit_label, pcs_per_unit: it.pcs_per_unit,
+          rate_per_unit: it.rate_per_unit, qty: it.qty };
+      });
+
+      renderEditOrder(o);
+    }
+
+    function renderEditOrder(o) {
+      var discPct = o.discount_percent || o.user_discount_percent || 0;
+      var brandName = o.brand_name || '';
+
+      var itemsTotal = 0;
+      var itemRows = editingOrderItems.map(function(it, i) {
+        var amount = it.rate_per_unit * it.qty;
+        var totalPcs = it.pcs_per_unit * it.qty;
+        itemsTotal += amount;
+        return '<tr>'
+          + '<td style="text-align:center">' + (i + 1) + '</td>'
+          + '<td style="font-family:monospace;font-size:0.75rem">' + escapeHtml(it.code) + '</td>'
+          + '<td>' + escapeHtml(it.name) + '</td>'
+          + '<td style="text-align:center">' + escapeHtml(it.size) + '</td>'
+          + '<td>' + escapeHtml(it.unit_label) + '</td>'
+          + '<td style="text-align:right"><input type="number" step="0.01" min="0" value="' + it.rate_per_unit + '" onchange="editOrderItemRate(' + i + ',this.value)" style="width:80px;text-align:right;padding:2px 4px;border:1px solid #ccc;border-radius:4px"></td>'
+          + '<td style="text-align:center"><input type="number" min="1" value="' + it.qty + '" onchange="editOrderItemQty(' + i + ',this.value)" style="width:60px;text-align:center;padding:2px 4px;border:1px solid #ccc;border-radius:4px"></td>'
+          + '<td style="text-align:center">' + totalPcs.toLocaleString('en-IN') + '</td>'
+          + '<td style="text-align:right;font-weight:700">' + fmt(amount) + '</td>'
+          + '<td style="text-align:center"><button onclick="removeEditOrderItem(' + i + ')" style="background:#f44336;color:white;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:0.8rem">&times;</button></td>'
+          + '</tr>';
+      }).join('');
+
+      var discountAmt = discPct > 0 ? Math.round(itemsTotal * discPct / 100 * 100) / 100 : 0;
+      var netTotal = itemsTotal - discountAmt;
+
+      document.getElementById('orderDetailTitle').textContent = 'Edit Order ' + o.order_no;
+      document.getElementById('editOrderBtn').style.display = 'none';
+
+      document.getElementById('orderDetailBody').innerHTML =
+        '<div style="margin-bottom:12px;padding:8px 12px;background:#e3f2fd;border-radius:8px;font-size:0.85rem;color:#1565c0"><strong>Editing Mode</strong> — Change quantities, rates, remove items, or add new items. Click Save when done.</div>'
+        + '<div style="overflow-x:auto;margin:12px 0">'
+        + '<table class="admin-table compact" style="min-width:650px">'
+        + '<thead><tr><th style="text-align:center">#</th><th>Code</th><th>Product</th><th style="text-align:center">Size</th><th>Unit</th><th style="text-align:right">Rate/Unit</th><th style="text-align:center">Units</th><th style="text-align:center">Total Pcs</th><th style="text-align:right">Amount</th><th></th></tr></thead>'
+        + '<tbody>' + itemRows + '</tbody>'
+        + '<tfoot>'
+        + (discPct > 0
+          ? '<tr style="background:#f5f5f5"><td colspan="8" style="text-align:right;padding:8px 6px">Subtotal</td><td style="text-align:right;padding:8px 6px">' + fmt(itemsTotal) + '</td><td></td></tr>'
+            + '<tr style="background:#e8f5e9"><td colspan="8" style="text-align:right;padding:8px 6px;color:#2e7d32;font-weight:600">Discount (' + discPct + '%)</td><td style="text-align:right;padding:8px 6px;color:#2e7d32;font-weight:600">&minus;' + fmt(discountAmt) + '</td><td></td></tr>'
+            + '<tr style="background:#e8eaf6;font-weight:700"><td colspan="8" style="text-align:right;padding:10px 6px"><strong>Net Total (excl. GST)</strong></td><td style="text-align:right;padding:10px 6px"><strong>' + fmt(netTotal) + '</strong></td><td></td></tr>'
+          : '<tr style="background:#e8eaf6;font-weight:700"><td colspan="8" style="text-align:right;padding:10px 6px"><strong>Total Amount (excl. GST)</strong></td><td style="text-align:right;padding:10px 6px"><strong>' + fmt(itemsTotal) + '</strong></td><td></td></tr>'
+        )
+        + '</tfoot>'
+        + '</table>'
+        + '</div>'
+        // Add item row
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px;padding:10px;background:#f5f5f5;border-radius:8px">'
+        +   '<div style="flex:1;min-width:120px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Code</label><input id="addItemCode" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="Code"></div>'
+        +   '<div style="flex:2;min-width:150px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Name</label><input id="addItemName" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="Product name"></div>'
+        +   '<div style="flex:0.8;min-width:80px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Size</label><input id="addItemSize" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="Size"></div>'
+        +   '<div style="flex:0.8;min-width:80px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Unit Label</label><input id="addItemUnitLabel" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="e.g. Box of 50"></div>'
+        +   '<div style="flex:0.5;min-width:60px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Pcs/Unit</label><input id="addItemPcsPerUnit" type="number" min="1" value="1" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px"></div>'
+        +   '<div style="flex:0.5;min-width:70px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Rate</label><input id="addItemRate" type="number" step="0.01" min="0" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="0.00"></div>'
+        +   '<div style="flex:0.5;min-width:60px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Qty</label><input id="addItemQty" type="number" min="1" value="1" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px"></div>'
+        +   '<button onclick="addEditOrderItem()" style="background:#4caf50;color:white;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-weight:600;white-space:nowrap">+ Add</button>'
+        + '</div>'
+        // Notes
+        + '<div style="margin-bottom:12px"><label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px">Notes</label><textarea id="editOrderNotes" rows="2" style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem;resize:vertical">' + escapeHtml(o.notes || '') + '</textarea></div>'
+        // Action buttons
+        + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+        +   '<button onclick="cancelEditOrder()" style="background:#9e9e9e;color:white;border:none;border-radius:6px;padding:8px 20px;cursor:pointer;font-weight:600">Cancel</button>'
+        +   '<button onclick="saveEditOrder()" style="background:#1565c0;color:white;border:none;border-radius:6px;padding:8px 20px;cursor:pointer;font-weight:600">Save Changes</button>'
+        + '</div>';
+    }
+
+    function editOrderItemQty(index, val) {
+      var qty = parseInt(val);
+      if (isNaN(qty) || qty < 1) qty = 1;
+      editingOrderItems[index].qty = qty;
+      renderEditOrder(lastViewedOrder.order);
+    }
+
+    function editOrderItemRate(index, val) {
+      var rate = parseFloat(val);
+      if (isNaN(rate) || rate < 0) rate = 0;
+      editingOrderItems[index].rate_per_unit = rate;
+      renderEditOrder(lastViewedOrder.order);
+    }
+
+    function removeEditOrderItem(index) {
+      if (editingOrderItems.length <= 1) { alert('Order must have at least one item'); return; }
+      editingOrderItems.splice(index, 1);
+      renderEditOrder(lastViewedOrder.order);
+    }
+
+    function addEditOrderItem() {
+      var code = document.getElementById('addItemCode').value.trim();
+      var name = document.getElementById('addItemName').value.trim();
+      var size = document.getElementById('addItemSize').value.trim();
+      var unitLabel = document.getElementById('addItemUnitLabel').value.trim();
+      var pcsPerUnit = parseInt(document.getElementById('addItemPcsPerUnit').value) || 1;
+      var rate = parseFloat(document.getElementById('addItemRate').value) || 0;
+      var qty = parseInt(document.getElementById('addItemQty').value) || 1;
+
+      if (!code || !name || !size) { alert('Code, Name, and Size are required'); return; }
+
+      editingOrderItems.push({
+        product_id: null, code: code, name: name, size: size,
+        unit_type: 'custom', unit_label: unitLabel || 'Pcs',
+        pcs_per_unit: pcsPerUnit, rate_per_unit: rate, qty: qty
+      });
+
+      renderEditOrder(lastViewedOrder.order);
+    }
+
+    function cancelEditOrder() {
+      editingOrderItems = null;
+      document.getElementById('editOrderBtn').style.display = '';
+      viewOrder(lastViewedOrder.order.id);
+    }
+
+    async function saveEditOrder() {
+      if (!lastViewedOrder || !editingOrderItems) return;
+      var orderId = lastViewedOrder.order.id;
+      var notes = document.getElementById('editOrderNotes').value.trim();
+
+      var r = await apiPut('/api/admin/orders/' + orderId + '/edit', {
+        items: editingOrderItems,
+        notes: notes || null
+      });
+
+      if (r.ok) {
+        editingOrderItems = null;
+        document.getElementById('editOrderBtn').style.display = '';
+        loadOrders();
+        viewOrder(orderId);
+      } else {
+        alert(r.data.error || 'Failed to save order');
+      }
     }
 
     // ═══ PRODUCTS ═══
@@ -1264,11 +1161,11 @@
 
       document.getElementById('productsBody').innerHTML = data.products.map(function(p) {
         return '<tr' + (p.active ? '' : ' class="inactive-row"') + '>'
-          + '<td><span class="mini-tag">' + (p.brand_name || p.brand_id) + '</span></td>'
-          + '<td class="code-cell">' + p.code + '</td>'
-          + '<td>' + p.name + '</td>'
-          + '<td>' + p.category + '</td>'
-          + '<td>' + p.size + '</td>'
+          + '<td><span class="mini-tag">' + escapeHtml(p.brand_name || p.brand_id) + '</span></td>'
+          + '<td class="code-cell">' + escapeHtml(p.code) + '</td>'
+          + '<td>' + escapeHtml(p.name) + '</td>'
+          + '<td>' + escapeHtml(p.category) + '</td>'
+          + '<td>' + escapeHtml(p.size) + '</td>'
           + '<td>' + fmt(p.rate) + '</td>'
           + '<td>' + (p.std_pkg || '\u2014') + '</td>'
           + '<td>' + (p.qty_box || '\u2014') + '</td>'
