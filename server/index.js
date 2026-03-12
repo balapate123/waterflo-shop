@@ -54,6 +54,19 @@ try {
   console.log('Migration: added discount_percent and net_amount to orders table');
 }
 
+// Migrations: add user_category_discounts table if missing
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS user_category_discounts (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    discount_percent REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, category)
+  )`);
+  console.log('Migration: user_category_discounts table ensured');
+} catch (e) {
+  console.error('Migration error (user_category_discounts):', e.message);
+}
+
 // Database hardening: add missing indexes and triggers
 try {
   db.exec("CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)");

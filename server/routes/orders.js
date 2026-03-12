@@ -57,24 +57,50 @@ router.post('/', requireAuth, (req, res) => {
   const count = db.prepare("SELECT COUNT(*) as c FROM orders WHERE order_no LIKE ?").get(`WF-${datePart}%`).c;
   const orderNo = `WF-${datePart}-${String(count + 1).padStart(4, '0')}`;
 
-  // Use discount from user record (authoritative), not from client
+  // Fetch per-category discounts for this user (authoritative — not from client)
+  const categoryDiscRows = db.prepare(
+    'SELECT category, discount_percent FROM user_category_discounts WHERE user_id = ?'
+  ).all(req.user.id);
+  const categoryDiscMap = {};
+  for (const d of categoryDiscRows) {
+    categoryDiscMap[d.category] = d.discount_percent;
+  }
+  const hasCategoryDiscounts = Object.keys(categoryDiscMap).length > 0;
+
+  // Fallback flat discount from user record
   const userDiscPct = req.user.discount_percent || 0;
 
-  // Calculate total (original prices)
+  // Calculate totals: per-item if category discounts exist, else flat
   let totalAmount = 0;
+  let totalDiscount = 0;
+
   for (const item of items) {
-    totalAmount += (item.rate_per_unit || 0) * (item.qty || 0);
+    const lineTotal = (item.rate_per_unit || 0) * (item.qty || 0);
+    totalAmount += lineTotal;
+
+    if (hasCategoryDiscounts) {
+      // item.trade_category is sent by the client (getProductTradeCategory result)
+      const tradeCategory = item.trade_category || null;
+      const discPct = (tradeCategory && categoryDiscMap[tradeCategory] !== undefined)
+        ? categoryDiscMap[tradeCategory]
+        : 0;
+      totalDiscount += discPct > 0 ? Math.round(lineTotal * discPct / 100 * 100) / 100 : 0;
+    }
   }
 
-  // Calculate net after discount
-  const discountAmt = userDiscPct > 0 ? Math.round(totalAmount * userDiscPct / 100 * 100) / 100 : 0;
-  const netAmount = totalAmount - discountAmt;
+  if (!hasCategoryDiscounts && userDiscPct > 0) {
+    totalDiscount = Math.round(totalAmount * userDiscPct / 100 * 100) / 100;
+  }
+
+  const netAmount = totalAmount - totalDiscount;
+  // Store the effective overall discount % for display/invoice (approximate if per-category)
+  const effectiveDiscPct = totalAmount > 0 ? Math.round(totalDiscount / totalAmount * 10000) / 100 : 0;
 
   try {
     const orderResult = db.prepare(`
       INSERT INTO orders (order_no, user_id, brand_id, total_amount, discount_percent, net_amount, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(orderNo, req.user.id, brand_id, totalAmount, userDiscPct, netAmount, notes || null);
+    `).run(orderNo, req.user.id, brand_id, totalAmount, effectiveDiscPct, netAmount, notes || null);
 
     const orderId = orderResult.lastInsertRowid;
 
@@ -108,7 +134,7 @@ router.post('/', requireAuth, (req, res) => {
         id: orderId,
         order_no: orderNo,
         total_amount: totalAmount,
-        discount_percent: userDiscPct,
+        discount_percent: effectiveDiscPct,
         net_amount: netAmount,
         status: 'pending',
         created_at: now.toISOString()
@@ -119,6 +145,7 @@ router.post('/', requireAuth, (req, res) => {
     res.status(500).json({ error: 'Failed to create order' });
   }
 });
+
 
 // GET /api/orders — list user's orders
 router.get('/', requireAuth, (req, res) => {

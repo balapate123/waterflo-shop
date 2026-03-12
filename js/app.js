@@ -13,8 +13,95 @@ function escapeHtml(str) {
 var activeBrand = window.activeBrand || null;
 var CATEGORIES = [];
 var SUBCATEGORY_NAMES = {};
-var userDiscount = 0; // percentage discount for logged-in user
-var userData = null;   // current user data from /api/auth/me
+var userDiscount = 0;           // legacy flat % — kept for fallback
+var userData = null;            // current user data from /api/auth/me
+var userCategoryDiscounts = {}; // { 'CPVC Pipes': 59.90, ... } from /api/auth/me
+
+// ─── TRADE CATEGORY MAPPING ─────────────────────────────────────────────────────
+// Maps (brandId + product category + subcategory) → trade discount category name
+// These 17 names match exactly what is stored in user_category_discounts table.
+function getProductTradeCategory(item) {
+  var brandId  = (item.brandId || '').toLowerCase();
+  var cat      = (item.category || '').toLowerCase();
+  var sub      = (item.subcategory || '').toLowerCase();
+  var nameLower = (item.name || '').toLowerCase();
+
+  // ── StrongFit CPVC (cpvc brand) ──
+  if (brandId === 'strongfit-cpvc') {
+    if (cat === 'pipes')                                      return 'CPVC Pipes';
+    if (cat === 'valves')                                     return 'uPVC Ball Valves';
+    if (cat === 'brass' || sub.indexOf('brass') >= 0)         return 'CPVC Brass Fittings';
+    if (cat === 'accessories' && sub === 'solventcement')     return 'CPVC / uPVC Solvent';
+    return 'CPVC Fittings'; // fittings, reducers, mixer
+  }
+
+  // ── SureFit uPVC Plumbing ──
+  if (brandId === 'surefit-upvc') {
+    if (cat === 'pipes')                                      return 'uPVC Pipes';
+    if (cat === 'valves' || sub.indexOf('ball') >= 0)         return 'uPVC Ball Valves';
+    if (cat === 'brass' || sub.indexOf('brass') >= 0)         return 'uPVC Brass Fittings';
+    if (cat === 'accessories' && sub === 'solventcement')     return 'CPVC / uPVC Solvent';
+    return 'uPVC Fittings';
+  }
+
+  // ── SWR brands (ClickFit, uPVC SWR, SelFit) ──
+  if (brandId === 'clickfit-swr' || brandId === 'upvc-swr' || brandId === 'selfit') {
+    if (cat === 'pipes')                                      return 'SWR Pipes';
+    if (cat === 'accessories' && sub === 'solventcement')     return 'PVC / SWR Solvent';
+    return 'SWR Fittings';
+  }
+
+  // ── UGD Underground Drainage ──
+  if (brandId === 'ugd') {
+    return 'UGD Pipes';
+  }
+
+  // ── AgriMaster Agriculture PVC ──
+  if (brandId === 'agrimaster') {
+    if (sub === 'column_pipe')                                return 'Column Pipes';
+    if (cat === 'pipes')                                      return 'PVC Pipes';
+    if (cat === 'valves' || sub === 'valve')                  return 'PVC Ball Valves';
+    if (cat === 'brass' || sub.indexOf('brass') >= 0)         return 'PVC Brass Fittings';
+    if (cat === 'accessories' && sub === 'solventcement')     return 'PVC / SWR Solvent';
+    return 'PVC Fittings';
+  }
+
+  // ── Boreline Column Pipes ──
+  if (brandId === 'boreline') {
+    return 'Column Pipes';
+  }
+
+  // ── Fallback: guess from product name ──
+  if (nameLower.indexOf('cpvc') >= 0 && cat === 'pipes')    return 'CPVC Pipes';
+  if (nameLower.indexOf('cpvc') >= 0 && cat === 'brass')    return 'CPVC Brass Fittings';
+  if (nameLower.indexOf('cpvc') >= 0)                       return 'CPVC Fittings';
+  if (nameLower.indexOf('upvc') >= 0 && cat === 'pipes')    return 'uPVC Pipes';
+  if (nameLower.indexOf('upvc') >= 0 && cat === 'brass')    return 'uPVC Brass Fittings';
+  if (nameLower.indexOf('upvc') >= 0)                       return 'uPVC Fittings';
+  if (nameLower.indexOf('swr')  >= 0 && cat === 'pipes')    return 'SWR Pipes';
+  if (nameLower.indexOf('swr')  >= 0)                       return 'SWR Fittings';
+  if (nameLower.indexOf('ugd')  >= 0)                       return 'UGD Pipes';
+  if (nameLower.indexOf('pvc')  >= 0 && cat === 'pipes')    return 'PVC Pipes';
+  if (nameLower.indexOf('column') >= 0)                     return 'Column Pipes';
+  if (nameLower.indexOf('solvent') >= 0 || sub === 'solventcement') {
+    return (nameLower.indexOf('swr') >= 0) ? 'PVC / SWR Solvent' : 'CPVC / uPVC Solvent';
+  }
+  // Default: CPVC Fittings (most common brand)
+  return 'CPVC Fittings';
+}
+
+// Get the discount % that applies to a specific cart item
+function getItemDiscount(item) {
+  // Category discounts take priority over flat discount
+  if (Object.keys(userCategoryDiscounts).length > 0) {
+    var tradeCategory = getProductTradeCategory(item);
+    if (userCategoryDiscounts[tradeCategory] !== undefined) {
+      return userCategoryDiscounts[tradeCategory];
+    }
+  }
+  // Fallback to legacy flat discount
+  return userDiscount || 0;
+}
 
 // ─── LOAD CART — migrate / clear old format ─────────────────────────────────────
 var cart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
@@ -214,7 +301,19 @@ function saveCart() {
 function cartLineCount()  { return cart.length; }
 function cartUnitCount()  { return cart.reduce(function(s, i) { return s + i.qty; }, 0); }
 function cartTotal()      { return cart.reduce(function(s, i) { return s + (i.ratePerUnit * i.qty); }, 0); }
-function cartDiscountAmt(){ return userDiscount > 0 ? Math.round(cartTotal() * userDiscount / 100 * 100) / 100 : 0; }
+function cartDiscountAmt(){
+  // Per-item discount: each item gets its own category-specific discount
+  if (Object.keys(userCategoryDiscounts).length > 0) {
+    return cart.reduce(function(s, item) {
+      var pct = getItemDiscount(item);
+      var lineTotal = item.ratePerUnit * item.qty;
+      var disc = pct > 0 ? Math.round(lineTotal * pct / 100 * 100) / 100 : 0;
+      return s + disc;
+    }, 0);
+  }
+  // Legacy flat discount
+  return userDiscount > 0 ? Math.round(cartTotal() * userDiscount / 100 * 100) / 100 : 0;
+}
 function cartNetTotal()   { return cartTotal() - cartDiscountAmt(); }
 
 function addToCart(code) {
@@ -314,13 +413,17 @@ function updateCartUI() {
   var totalEl = document.getElementById('cartTotal');
   var countEl = document.getElementById('cartItemCount');
 
-  if (userDiscount > 0 && lines > 0) {
+  var hasDiscount = cartDiscountAmt() > 0;
+  if (hasDiscount && lines > 0) {
     totalEl.innerHTML =
       '<span style="text-decoration:line-through;color:#999;font-size:0.85em">' + fmtFull(cartTotal()) + '</span> '
       + fmtFull(cartNetTotal());
+    var discLabel = Object.keys(userCategoryDiscounts).length > 0
+      ? 'category discounts applied'
+      : userDiscount + '% off';
     countEl.innerHTML =
       lines + ' item' + (lines !== 1 ? 's' : '')
-      + ' &middot; <span style="color:#2e7d32">' + userDiscount + '% off</span>';
+      + ' &middot; <span style="color:#2e7d32">' + discLabel + '</span>';
   } else {
     totalEl.textContent = fmtFull(cartTotal());
     countEl.textContent = lines + ' item' + (lines !== 1 ? 's' : '');
@@ -661,38 +764,59 @@ function openQuote() {
   var brandName = activeBrand ? activeBrand.name : 'Waterflo';
   var priceDate = activeBrand ? activeBrand.priceDate : '';
 
-  // Calculate discount
-  var discPct = userDiscount || 0;
+  var hasCategoryDiscounts = Object.keys(userCategoryDiscounts).length > 0;
 
   var grossTotal = 0;
+  var totalDiscountAmt = 0;
+
   var rows = cart.map(function(item, i) {
     var rate = item.ratePerUnit;
     var lineTotal = rate * item.qty;
     grossTotal += lineTotal;
+
+    var discPct = getItemDiscount(item);
+    var lineDisc = discPct > 0 ? Math.round(lineTotal * discPct / 100 * 100) / 100 : 0;
+    totalDiscountAmt += lineDisc;
+    var lineNet = lineTotal - lineDisc;
+
     var totalPcs = item.pcsPerUnit * item.qty;
     var isPipe   = item.category === 'pipes';
+
+    // Discount badge per line
+    var discBadge = discPct > 0
+      ? ' <span style="font-size:0.72rem;background:#e8f5e9;color:#2e7d32;padding:1px 5px;border-radius:3px;font-weight:600">' + discPct + '% off</span>'
+      : '';
+
     return '<tr>'
       + '<td>' + (i+1) + '</td>'
       + '<td class="q-code">' + escapeHtml(item.code) + '</td>'
-      + '<td>' + escapeHtml(item.name) + '</td>'
+      + '<td>' + escapeHtml(item.name) + discBadge + '</td>'
       + '<td>' + escapeHtml(item.size) + '</td>'
       + '<td>' + escapeHtml(item.unitLabel) + '</td>'
       + '<td class="tr">' + fmtFull(rate) + '</td>'
       + '<td class="tr">' + item.qty + '</td>'
       + '<td class="tr">' + totalPcs.toLocaleString('en-IN') + ' ' + (isPipe ? 'pipes' : 'pcs') + '</td>'
-      + '<td class="tr"><strong>' + fmtFull(lineTotal) + '</strong></td>'
+      + (hasCategoryDiscounts
+          ? '<td class="tr" style="color:#2e7d32">&minus;' + fmtFull(lineDisc) + '</td>'
+            + '<td class="tr"><strong>' + fmtFull(lineNet) + '</strong></td>'
+          : '<td class="tr"><strong>' + fmtFull(lineTotal) + '</strong></td>')
       + '</tr>';
   }).join('');
 
-  var discAmt = discPct > 0 ? Math.round(grossTotal * discPct / 100 * 100) / 100 : 0;
-  var netTotal = grossTotal - discAmt;
+  var netTotal = grossTotal - totalDiscountAmt;
 
-  // Discount info line
+  // Thead extra column if category discounts
+  var extraThDisc = hasCategoryDiscounts ? '<th>Discount</th><th>Net Amount</th>' : '<th>Amount</th>';
+
+  // Discount summary row
   var discountInfo = '';
-  if (discPct > 0) {
-    discountInfo = '<tr class="discount-row"><td colspan="8" class="tr" style="color:#2e7d32;font-weight:600">Discount Applied: ' + discPct + '%'
-      + ' (You save: ' + fmtFull(discAmt) + ')</td>'
-      + '<td class="tr" style="color:#2e7d32;font-weight:600">&minus;' + fmtFull(discAmt) + '</td></tr>';
+  if (totalDiscountAmt > 0) {
+    var colSpan = hasCategoryDiscounts ? 8 : 8;
+    discountInfo = '<tr class="discount-row"><td colspan="' + colSpan + '" class="tr" style="color:#2e7d32;font-weight:600">'
+      + (hasCategoryDiscounts ? 'Category Discounts Applied' : ('Discount Applied: ' + userDiscount + '%'))
+      + ' (You save: ' + fmtFull(totalDiscountAmt) + ')</td>'
+      + (hasCategoryDiscounts ? '<td class="tr" style="color:#2e7d32;font-weight:600">&minus;' + fmtFull(totalDiscountAmt) + '</td><td></td>' : '<td class="tr" style="color:#2e7d32;font-weight:600">&minus;' + fmtFull(totalDiscountAmt) + '</td>')
+      + '</tr>';
   }
 
   // Dealer info
@@ -715,31 +839,31 @@ function openQuote() {
     +   '<div><strong>Quote No:</strong> ' + quoteNo + '</div>'
     +   '<div><strong>Date:</strong> ' + dateStr + '</div>'
     +   '<div><strong>Valid:</strong> 7 days</div>'
-    +   (discPct > 0 ? '<div style="color:#2e7d32;font-weight:700">Discount: ' + discPct + '%</div>' : '')
+    +   (totalDiscountAmt > 0 ? '<div style="color:#2e7d32;font-weight:700">&#127991; Discounts Applied</div>' : '')
     + '</div>'
     + '</div>'
     + dealerInfo
     + '<div class="quote-scroll">'
     + '<table class="quote-table">'
     +   '<thead><tr><th>#</th><th>Code</th><th>Product</th><th>Size</th><th>Unit</th>'
-    +   '<th>Rate/Unit</th><th>Units</th><th>Qty (total)</th><th>Amount</th></tr></thead>'
+    +   '<th>Rate/Unit</th><th>Units</th><th>Qty (total)</th>' + extraThDisc + '</tr></thead>'
     +   '<tbody>' + rows + '</tbody>'
     +   '<tfoot>'
-    +   (discPct > 0
-      ? '<tr><td colspan="8" class="tr">Subtotal (before discount)</td><td class="tr">' + fmtFull(grossTotal) + '</td></tr>'
+    +   (totalDiscountAmt > 0
+      ? '<tr><td colspan="' + (hasCategoryDiscounts ? '9' : '8') + '" class="tr">Subtotal (before discounts)</td><td class="tr">' + fmtFull(grossTotal) + '</td></tr>'
         + discountInfo
       : '')
     +   '<tr class="total-row">'
-    +     '<td colspan="8" class="tr"><strong>Estimated Total (excl. GST)</strong></td>'
+    +     '<td colspan="' + (hasCategoryDiscounts ? '9' : '8') + '" class="tr"><strong>Estimated Total (excl. GST)</strong></td>'
     +     '<td class="tr"><strong>' + fmtFull(netTotal) + '</strong></td>'
     +   '</tr>'
-    +   (hasTbd ? '<tr><td colspan="9" class="quote-note">* Items with "\u2014" are contact-for-price and excluded from total</td></tr>' : '')
+    +   (hasTbd ? '<tr><td colspan="' + (hasCategoryDiscounts ? '11' : '9') + '" class="quote-note">* Items with "\u2014" are contact-for-price and excluded from total</td></tr>' : '')
     +   '</tfoot>'
     + '</table>'
     + '</div>'
     + '<div class="quote-footer-note">'
     +   '<p>\u2022 All rates are per selected unit, exclusive of GST</p>'
-    +   (discPct > 0 ? '<p>\u2022 Discount of ' + discPct + '% applied on total</p>' : '')
+    +   (totalDiscountAmt > 0 ? '<p>\u2022 Trade discounts applied per product category as per agreement</p>' : '')
     +   '<p>\u2022 Prices subject to change without prior notice \u00B7 Subject to availability</p>'
     +   '<p>\u2022 Standard terms &amp; conditions apply</p>'
     + '</div>';
@@ -772,29 +896,42 @@ function closeOrder() {
 }
 
 function getOrderFormHTML() {
-  var discPct = userDiscount || 0;
+  var hasCategoryDiscounts = Object.keys(userCategoryDiscounts).length > 0;
 
   var lines = cart.map(function(i) {
     var n      = i.pcsPerUnit * i.qty;
     var isPipe = i.category === 'pipes';
-    var rate   = i.ratePerUnit;
+    var lineTotal = i.ratePerUnit * i.qty;
+    var discPct = getItemDiscount(i);
+    var lineDisc = discPct > 0 ? Math.round(lineTotal * discPct / 100 * 100) / 100 : 0;
+    var lineNet = lineTotal - lineDisc;
+    var discBadge = discPct > 0
+      ? ' <span style="font-size:0.72rem;background:#e8f5e9;color:#2e7d32;padding:1px 4px;border-radius:3px">' + discPct + '%\u2193</span>'
+      : '';
     return '<div class="order-item-preview">'
       + '<span class="oip-code">' + escapeHtml(i.code) + '</span>'
-      + '<span class="oip-name">' + escapeHtml(i.name) + ' ' + escapeHtml(i.size) + '</span>'
+      + '<span class="oip-name">' + escapeHtml(i.name) + ' ' + escapeHtml(i.size) + discBadge + '</span>'
       + '<span class="oip-unit">' + escapeHtml(i.unitLabel) + ' \u00D7 ' + i.qty + '</span>'
-      + '<span class="oip-total">' + n.toLocaleString('en-IN') + ' ' + (isPipe?'pipes':'pcs') + ' \u00B7 ' + fmtFull(rate*i.qty) + '</span>'
+      + '<span class="oip-total">' + n.toLocaleString('en-IN') + ' ' + (isPipe?'pipes':'pcs')
+        + ' \u00B7 '
+        + (lineDisc > 0
+            ? '<s style="color:#999;font-size:0.85em">' + fmtFull(lineTotal) + '</s> ' + fmtFull(lineNet)
+            : fmtFull(lineTotal))
+        + '</span>'
       + '</div>';
   }).join('');
 
-  var subtotal = cartTotal();
-  var discAmt = cartDiscountAmt();
-  var netTotal = cartNetTotal();
+  var subtotal    = cartTotal();
+  var discAmt     = cartDiscountAmt();
+  var netTotal    = cartNetTotal();
 
   var discountNote = '';
-  if (discPct > 0) {
+  if (discAmt > 0) {
     discountNote = '<div style="text-align:right;font-size:0.82rem;margin-top:8px;padding-top:8px;border-top:1px solid #e0e0e0">'
       + '<div>Subtotal: ' + fmtFull(subtotal) + '</div>'
-      + '<div style="color:#2e7d32;font-weight:600">Discount (' + discPct + '%): &minus;' + fmtFull(discAmt) + '</div>'
+      + '<div style="color:#2e7d32;font-weight:600">'
+      + (hasCategoryDiscounts ? 'Category Discounts: ' : ('Discount (' + userDiscount + '%): '))
+      + '&minus;' + fmtFull(discAmt) + '</div>'
       + '<div style="font-weight:700;font-size:0.9rem;margin-top:4px">Net Total: ' + fmtFull(netTotal) + '</div>'
       + '</div>';
   }
@@ -831,7 +968,8 @@ function submitOrder(e) {
       unit_label: i.unitLabel,
       pcs_per_unit: i.pcsPerUnit,
       rate_per_unit: i.ratePerUnit,
-      qty: i.qty
+      qty: i.qty,
+      trade_category: getProductTradeCategory(i) // for server-side per-category discount
     };
   });
 
@@ -927,7 +1065,7 @@ function init() {
   // Apply brand theme
   applyBrandTheme();
 
-  // Fetch user data (discount, name) — non-blocking
+  // Fetch user data (discount, name, category discounts) — non-blocking
   fetch('/api/auth/me').then(function(res) {
     if (res.ok) return res.json();
     return null;
@@ -936,6 +1074,11 @@ function init() {
       userData = data.user;
       userDiscount = data.user.discount_percent || 0;
     }
+    if (data && data.category_discounts) {
+      userCategoryDiscounts = data.category_discounts;
+    }
+    // Re-render cart UI now that discounts are known
+    updateCartUI();
   }).catch(function() {});
 
   // Event listeners

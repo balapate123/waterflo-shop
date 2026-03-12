@@ -343,7 +343,7 @@
 
   <!-- ═══ EDIT USER MODAL ═══ -->
   <div class="modal" id="editUserModal">
-    <div class="modal-content" style="max-width:500px">
+    <div class="modal-content" style="max-width:700px">
       <div class="modal-header">
         <h2>Edit User</h2>
         <button onclick="closeModal('editUserModal')">&times;</button>
@@ -375,20 +375,34 @@
             <label>Address</label>
             <input id="eu_address" name="address">
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Discount %</label>
-              <input id="eu_discount" name="discount_percent" type="number" step="0.1" min="0" max="100">
-            </div>
-            <div class="form-group">
-              <label>Role</label>
-              <select id="eu_role" name="role">
-                <option value="dealer">Dealer</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label>Role</label>
+            <select id="eu_role" name="role" style="max-width:200px">
+              <option value="dealer">Dealer</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
-          <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:8px">Save Changes</button>
+
+          <!-- ── Category Discounts ── -->
+          <div style="margin-top:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="font-weight:600;font-size:0.95rem;margin:0">&#127991; Category Discounts</label>
+              <button type="button" onclick="resetCategoryDiscountsToDefault()" style="font-size:0.78rem;color:#1565c0;background:none;border:none;cursor:pointer;text-decoration:underline">Reset all to default</button>
+            </div>
+            <div style="background:#f5f7fa;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:0;font-size:0.78rem;font-weight:700;color:#fff;background:#1a237e;padding:8px 12px">
+                <span>Category</span>
+                <span style="text-align:right;min-width:90px">Default %</span>
+                <span style="text-align:right;min-width:110px">User Discount %</span>
+              </div>
+              <div id="eu_discount_grid" style="max-height:340px;overflow-y:auto">
+                <!-- Filled by JS -->
+              </div>
+            </div>
+            <p style="margin:6px 0 0;font-size:0.75rem;color:#888">&#x24D8; These are the trade discounts applied per product category for this dealer. Effective from the Price List dated 01/11/2025.</p>
+          </div>
+
+          <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:16px">Save Changes</button>
         </form>
       </div>
     </div>
@@ -598,7 +612,7 @@
           + '<td>' + escapeHtml(u.phone) + '</td>'
           + '<td class="email-cell">' + escapeHtml(u.email) + '</td>'
           + '<td>' + statusBadge(u.status) + '</td>'
-          + '<td>' + u.discount_percent + '%</td>'
+          + '<td>' + discountSummaryTag(u) + '</td>'
           + '<td class="brands-cell">' + brandTags + '</td>'
           + '<td class="actions-cell" onclick="event.stopPropagation()">' + actions + '</td>'
           + '</tr>';
@@ -611,7 +625,78 @@
       else alert(r.data.error);
     }
 
-    function openEditUser(id) {
+    // ─── Category Discount helpers ───────────────────────────────────────────
+
+    // Default discounts (mirrors server-side list for reset-to-default)
+    var DEFAULT_CATEGORY_DISCOUNTS = [
+      { category: 'CPVC Pipes',          discount_percent: 59.90 },
+      { category: 'CPVC Fittings',       discount_percent: 55.90 },
+      { category: 'CPVC Brass Fittings', discount_percent: 50.40 },
+      { category: 'uPVC Pipes',          discount_percent: 55.70 },
+      { category: 'uPVC Fittings',       discount_percent: 57.05 },
+      { category: 'uPVC Ball Valves',    discount_percent: 54.55 },
+      { category: 'uPVC Brass Fittings', discount_percent: 47.95 },
+      { category: 'SWR Pipes',           discount_percent: 55.85 },
+      { category: 'SWR Fittings',        discount_percent: 57.60 },
+      { category: 'UGD Pipes',           discount_percent: 55.85 },
+      { category: 'PVC Pipes',           discount_percent: 53.75 },
+      { category: 'PVC Fittings',        discount_percent: 56.00 },
+      { category: 'PVC Ball Valves',     discount_percent: 53.45 },
+      { category: 'PVC Brass Fittings',  discount_percent: 49.10 },
+      { category: 'Column Pipes',        discount_percent: 53.75 },
+      { category: 'CPVC / uPVC Solvent', discount_percent: 51.00 },
+      { category: 'PVC / SWR Solvent',   discount_percent: 47.60 },
+    ];
+
+    function renderDiscountGrid(discounts) {
+      var grid = document.getElementById('eu_discount_grid');
+      if (!grid) return;
+      grid.innerHTML = discounts.map(function(d, i) {
+        var isEven = i % 2 === 0;
+        var bg = isEven ? '#ffffff' : '#f9fafc';
+        var isCustom = Math.abs(d.discount_percent - d.default_percent) > 0.001;
+        var inputColor = isCustom ? '#1565c0' : '#333';
+        return '<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;padding:7px 12px;background:' + bg + ';border-bottom:1px solid #eeeff2">'
+          + '<span style="font-size:0.82rem">' + escapeHtml(d.category) + '</span>'
+          + '<span style="text-align:right;min-width:90px;color:#888;font-size:0.8rem">' + d.default_percent.toFixed(2) + '%</span>'
+          + '<div style="text-align:right;min-width:110px">'
+          +   '<input type="number" class="cat-disc-input" data-category="' + escapeHtml(d.category) + '" data-default="' + d.default_percent + '"'
+          +          ' value="' + d.discount_percent + '" min="0" max="100" step="0.01"'
+          +          ' style="width:80px;padding:4px 6px;border:1px solid #ccd;border-radius:4px;font-size:0.82rem;font-weight:600;text-align:right;color:' + inputColor + '"'
+          +          ' onchange="highlightDiscountInput(this)">'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function highlightDiscountInput(input) {
+      var def = parseFloat(input.getAttribute('data-default'));
+      var val = parseFloat(input.value);
+      input.style.color = (Math.abs(val - def) > 0.001) ? '#1565c0' : '#333';
+    }
+
+    function resetCategoryDiscountsToDefault() {
+      document.querySelectorAll('.cat-disc-input').forEach(function(inp) {
+        var def = parseFloat(inp.getAttribute('data-default'));
+        inp.value = def;
+        inp.style.color = '#333';
+      });
+    }
+
+    function discountSummaryTag(u) {
+      // Show count of non-default category discounts if any, else fallback
+      var customCount = u.category_discount_count || 0;
+      if (customCount > 0) {
+        return '<span style="font-size:0.78rem;background:#e3f2fd;color:#1565c0;padding:2px 7px;border-radius:10px;font-weight:600" title="' + customCount + ' category discounts set">'
+          + '&#127991; ' + customCount + ' cats'
+          + '</span>';
+      }
+      return '<span style="color:#888;font-size:0.85rem">' + (u.discount_percent || 0) + '%</span>';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    async function openEditUser(id) {
       var u = cachedUsers.find(function(x) { return x.id === id; });
       if (!u) return;
       document.getElementById('eu_id').value = u.id;
@@ -620,28 +705,60 @@
       document.getElementById('eu_phone').value = u.phone;
       document.getElementById('eu_email').value = u.email;
       document.getElementById('eu_address').value = u.address || '';
-      document.getElementById('eu_discount').value = u.discount_percent;
       document.getElementById('eu_role').value = u.role;
+
+      // Load category discounts
+      document.getElementById('eu_discount_grid').innerHTML = '<div style="padding:16px;text-align:center;color:#888">Loading discounts...</div>';
       document.getElementById('editUserModal').classList.add('open');
+
+      try {
+        var res = await fetch('/api/admin/users/' + id + '/discounts');
+        var data = await res.json();
+        if (res.ok) {
+          renderDiscountGrid(data.discounts);
+        } else {
+          document.getElementById('eu_discount_grid').innerHTML = '<div style="padding:16px;color:#c62828">Failed to load discounts</div>';
+        }
+      } catch (err) {
+        document.getElementById('eu_discount_grid').innerHTML = '<div style="padding:16px;color:#c62828">Error loading discounts</div>';
+      }
     }
 
     async function saveUserEdit(e) {
       e.preventDefault();
       var id = document.getElementById('eu_id').value;
-      var data = {
+      var userData = {
         company_name: document.getElementById('eu_company').value,
         contact_name: document.getElementById('eu_contact').value,
         phone: document.getElementById('eu_phone').value,
         email: document.getElementById('eu_email').value,
         address: document.getElementById('eu_address').value,
-        discount_percent: parseFloat(document.getElementById('eu_discount').value) || 0,
         role: document.getElementById('eu_role').value
       };
-      var r = await apiPut('/api/admin/users/' + id, data);
-      if (r.ok) {
-        closeModal('editUserModal');
-        loadUsers();
-      } else alert(r.data.error);
+
+      // Collect category discounts from grid
+      var discounts = [];
+      document.querySelectorAll('.cat-disc-input').forEach(function(inp) {
+        discounts.push({
+          category: inp.getAttribute('data-category'),
+          discount_percent: parseFloat(inp.value) || 0
+        });
+      });
+
+      // Save both in parallel
+      var results = await Promise.all([
+        apiPut('/api/admin/users/' + id, userData),
+        discounts.length > 0 ? apiPut('/api/admin/users/' + id + '/discounts', { discounts: discounts }) : Promise.resolve({ ok: true, data: {} })
+      ]);
+
+      var userResult = results[0];
+      var discResult = results[1];
+
+      if (!userResult.ok) { alert(userResult.data.error || 'Failed to save user info'); return; }
+      if (!discResult.ok) { alert(discResult.data.error || 'Failed to save discounts'); return; }
+
+      closeModal('editUserModal');
+      loadUsers();
     }
 
     async function deleteUser(id, btn) {

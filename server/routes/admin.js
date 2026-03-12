@@ -95,13 +95,16 @@ router.get('/users', (req, res) => {
 
   const users = db.prepare(query).all(...params);
 
-  // Get brand access for each user
+  // Get brand access and category discount count for each user
   for (const user of users) {
     user.brands = db.prepare(`
       SELECT b.id, b.short_name as name FROM user_brands ub
       JOIN brands b ON ub.brand_id = b.id
       WHERE ub.user_id = ?
     `).all(user.id);
+    user.category_discount_count = db.prepare(
+      'SELECT COUNT(*) as c FROM user_category_discounts WHERE user_id = ?'
+    ).get(user.id).c;
   }
 
   res.json({ users });
@@ -213,7 +216,90 @@ router.put('/users/:id/brands', (req, res) => {
   res.json({ message: 'Brand access updated' });
 });
 
-// ─── ORDERS ─────────────────────────────────────────────────────────────────
+// ─── CATEGORY DISCOUNTS ──────────────────────────────────────────────────────
+
+// Default trade discounts (from Godavari Trade Discount Revision 10-03-2026)
+const DEFAULT_CATEGORY_DISCOUNTS = [
+  { category: 'CPVC Pipes',          discount_percent: 59.90 },
+  { category: 'CPVC Fittings',       discount_percent: 55.90 },
+  { category: 'CPVC Brass Fittings', discount_percent: 50.40 },
+  { category: 'uPVC Pipes',          discount_percent: 55.70 },
+  { category: 'uPVC Fittings',       discount_percent: 57.05 },
+  { category: 'uPVC Ball Valves',    discount_percent: 54.55 },
+  { category: 'uPVC Brass Fittings', discount_percent: 47.95 },
+  { category: 'SWR Pipes',           discount_percent: 55.85 },
+  { category: 'SWR Fittings',        discount_percent: 57.60 },
+  { category: 'UGD Pipes',           discount_percent: 55.85 },
+  { category: 'PVC Pipes',           discount_percent: 53.75 },
+  { category: 'PVC Fittings',        discount_percent: 56.00 },
+  { category: 'PVC Ball Valves',     discount_percent: 53.45 },
+  { category: 'PVC Brass Fittings',  discount_percent: 49.10 },
+  { category: 'Column Pipes',        discount_percent: 53.75 },
+  { category: 'CPVC / uPVC Solvent', discount_percent: 51.00 },
+  { category: 'PVC / SWR Solvent',   discount_percent: 47.60 },
+];
+
+// GET /api/admin/users/:id/discounts — get per-category discounts for a user
+router.get('/users/:id/discounts', (req, res) => {
+  const db = req.app.get('db');
+  const userId = req.params.id;
+
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const saved = db.prepare('SELECT category, discount_percent FROM user_category_discounts WHERE user_id = ?').all(userId);
+  const savedMap = {};
+  for (const s of saved) savedMap[s.category] = s.discount_percent;
+
+  // Merge defaults with user-specific overrides
+  const discounts = DEFAULT_CATEGORY_DISCOUNTS.map(d => ({
+    category: d.category,
+    default_percent: d.discount_percent,
+    discount_percent: savedMap[d.category] !== undefined ? savedMap[d.category] : d.discount_percent
+  }));
+
+  res.json({ discounts, defaults: DEFAULT_CATEGORY_DISCOUNTS });
+});
+
+// PUT /api/admin/users/:id/discounts — save per-category discounts for a user
+router.put('/users/:id/discounts', (req, res) => {
+  const db = req.app.get('db');
+  const userId = req.params.id;
+  const { discounts } = req.body;
+
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  if (!Array.isArray(discounts) || discounts.length === 0) {
+    return res.status(400).json({ error: 'discounts must be a non-empty array' });
+  }
+
+  for (const d of discounts) {
+    if (!d.category || typeof d.category !== 'string') {
+      return res.status(400).json({ error: 'Each discount must have a category string' });
+    }
+    if (typeof d.discount_percent !== 'number' || d.discount_percent < 0 || d.discount_percent > 100) {
+      return res.status(400).json({ error: `discount_percent must be between 0 and 100 for "${d.category}"` });
+    }
+  }
+
+  const upsert = db.prepare(`
+    INSERT INTO user_category_discounts (user_id, category, discount_percent)
+    VALUES (?, ?, ?)
+    ON CONFLICT(user_id, category) DO UPDATE SET discount_percent = excluded.discount_percent
+  `);
+
+  const saveAll = db.transaction((items) => {
+    for (const d of items) {
+      upsert.run(userId, d.category, d.discount_percent);
+    }
+  });
+
+  saveAll(discounts);
+  res.json({ message: 'Category discounts updated', count: discounts.length });
+});
+
+
 
 router.get('/orders', (req, res) => {
   const db = req.app.get('db');

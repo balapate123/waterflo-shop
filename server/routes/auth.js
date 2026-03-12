@@ -116,7 +116,19 @@ router.get('/me', (req, res) => {
     return res.status(403).json({ error: 'Account not approved', status: user.status });
   }
 
-  res.json({ user });
+  // Fetch per-category discounts
+  const categoryDiscounts = db.prepare(
+    'SELECT category, discount_percent FROM user_category_discounts WHERE user_id = ?'
+  ).all(user.id);
+
+  // Build a map { category: discount_percent }
+  const categoryDiscountMap = {};
+  for (const d of categoryDiscounts) {
+    categoryDiscountMap[d.category] = d.discount_percent;
+  }
+
+  res.json({ user, category_discounts: categoryDiscountMap });
 });
+
 
 module.exports = router;
