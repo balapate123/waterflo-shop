@@ -5,7 +5,7 @@ const router = express.Router();
 // POST /api/orders — create order from cart
 router.post('/', requireAuth, (req, res) => {
   const db = req.app.get('db');
-  const { items, brand_id, notes } = req.body;
+  const { items, brand_id, notes, dealer_id } = req.body;
 
   if (!items || !Array.isArray(items) || !items.length) {
     return res.status(400).json({ error: 'Order must have at least one item' });
@@ -15,14 +15,39 @@ router.post('/', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Brand ID required' });
   }
 
+  // ── Determine the effective user (dealer) for this order ─────────────────
+  // For salesman placing on behalf of a dealer, we use the dealer's account.
+  let effectiveUser = req.user; // default: logged-in user IS the dealer
+
+  if (req.user.role === 'salesman') {
+    if (!dealer_id) {
+      return res.status(400).json({ error: 'Salesman must specify a dealer_id' });
+    }
+    // Verify the salesman is linked to this dealer
+    const link = db.prepare(
+      'SELECT 1 FROM salesman_dealers WHERE salesman_id = ? AND dealer_id = ?'
+    ).get(req.user.id, dealer_id);
+    if (!link) {
+      return res.status(403).json({ error: 'You are not assigned to this dealer' });
+    }
+    // Load the dealer's full record
+    const dealer = db.prepare(
+      'SELECT id, email, company_name, contact_name, phone, discount_percent, role, status FROM users WHERE id = ? AND status = ?'
+    ).get(dealer_id, 'approved');
+    if (!dealer) {
+      return res.status(400).json({ error: 'Dealer not found or not approved' });
+    }
+    effectiveUser = dealer;
+  }
+
   // Validate brand exists
   const brand = db.prepare('SELECT id FROM brands WHERE id = ? AND active = 1').get(brand_id);
   if (!brand) {
     return res.status(400).json({ error: 'Invalid brand' });
   }
 
-  // Validate user has access to this brand
-  const brandAccess = db.prepare('SELECT 1 FROM user_brands WHERE user_id = ? AND brand_id = ?').get(req.user.id, brand_id);
+  // Validate effective user has access to this brand
+  const brandAccess = db.prepare('SELECT 1 FROM user_brands WHERE user_id = ? AND brand_id = ?').get(effectiveUser.id, brand_id);
   if (!brandAccess) {
     return res.status(403).json({ error: 'No access to this brand' });
   }
@@ -57,18 +82,18 @@ router.post('/', requireAuth, (req, res) => {
   const count = db.prepare("SELECT COUNT(*) as c FROM orders WHERE order_no LIKE ?").get(`WF-${datePart}%`).c;
   const orderNo = `WF-${datePart}-${String(count + 1).padStart(4, '0')}`;
 
-  // Fetch per-category discounts for this user (authoritative — not from client)
+  // Fetch per-category discounts for the EFFECTIVE (dealer) user — authoritative
   const categoryDiscRows = db.prepare(
     'SELECT category, discount_percent FROM user_category_discounts WHERE user_id = ?'
-  ).all(req.user.id);
+  ).all(effectiveUser.id);
   const categoryDiscMap = {};
   for (const d of categoryDiscRows) {
     categoryDiscMap[d.category] = d.discount_percent;
   }
   const hasCategoryDiscounts = Object.keys(categoryDiscMap).length > 0;
 
-  // Fallback flat discount from user record
-  const userDiscPct = req.user.discount_percent || 0;
+  // Fallback flat discount from effective user record
+  const userDiscPct = effectiveUser.discount_percent || 0;
 
   // Calculate totals: per-item if category discounts exist, else flat
   let totalAmount = 0;
@@ -79,7 +104,6 @@ router.post('/', requireAuth, (req, res) => {
     totalAmount += lineTotal;
 
     if (hasCategoryDiscounts) {
-      // item.trade_category is sent by the client (getProductTradeCategory result)
       const tradeCategory = item.trade_category || null;
       const discPct = (tradeCategory && categoryDiscMap[tradeCategory] !== undefined)
         ? categoryDiscMap[tradeCategory]
@@ -93,14 +117,16 @@ router.post('/', requireAuth, (req, res) => {
   }
 
   const netAmount = totalAmount - totalDiscount;
-  // Store the effective overall discount % for display/invoice (approximate if per-category)
   const effectiveDiscPct = totalAmount > 0 ? Math.round(totalDiscount / totalAmount * 10000) / 100 : 0;
+
+  // The salesman_id to store (null if dealer placed the order themselves)
+  const salesmanId = req.user.role === 'salesman' ? req.user.id : null;
 
   try {
     const orderResult = db.prepare(`
-      INSERT INTO orders (order_no, user_id, brand_id, total_amount, discount_percent, net_amount, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(orderNo, req.user.id, brand_id, totalAmount, effectiveDiscPct, netAmount, notes || null);
+      INSERT INTO orders (order_no, user_id, brand_id, total_amount, discount_percent, net_amount, notes, placed_by_salesman_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(orderNo, effectiveUser.id, brand_id, totalAmount, effectiveDiscPct, netAmount, notes || null, salesmanId);
 
     const orderId = orderResult.lastInsertRowid;
 
@@ -137,7 +163,8 @@ router.post('/', requireAuth, (req, res) => {
         discount_percent: effectiveDiscPct,
         net_amount: netAmount,
         status: 'pending',
-        created_at: now.toISOString()
+        created_at: now.toISOString(),
+        placed_by_salesman_id: salesmanId
       }
     });
   } catch (err) {
@@ -147,17 +174,31 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 
-// GET /api/orders — list user's orders
+// GET /api/orders — list user's orders (dealer sees own orders; salesman sees orders they placed)
 router.get('/', requireAuth, (req, res) => {
   const db = req.app.get('db');
 
-  const orders = db.prepare(`
-    SELECT o.*, b.name as brand_name, b.short_name as brand_short_name
-    FROM orders o
-    LEFT JOIN brands b ON o.brand_id = b.id
-    WHERE o.user_id = ?
-    ORDER BY o.created_at DESC
-  `).all(req.user.id);
+  let orders;
+  if (req.user.role === 'salesman') {
+    // Salesman sees all orders they have placed across all dealers
+    orders = db.prepare(`
+      SELECT o.*, b.name as brand_name, b.short_name as brand_short_name,
+             u.company_name as dealer_company, u.contact_name as dealer_contact
+      FROM orders o
+      LEFT JOIN brands b ON o.brand_id = b.id
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.placed_by_salesman_id = ?
+      ORDER BY o.created_at DESC
+    `).all(req.user.id);
+  } else {
+    orders = db.prepare(`
+      SELECT o.*, b.name as brand_name, b.short_name as brand_short_name
+      FROM orders o
+      LEFT JOIN brands b ON o.brand_id = b.id
+      WHERE o.user_id = ?
+      ORDER BY o.created_at DESC
+    `).all(req.user.id);
+  }
 
   res.json({ orders });
 });
@@ -166,12 +207,25 @@ router.get('/', requireAuth, (req, res) => {
 router.get('/:id', requireAuth, (req, res) => {
   const db = req.app.get('db');
 
-  const order = db.prepare(`
-    SELECT o.*, b.name as brand_name, b.short_name as brand_short_name
-    FROM orders o
-    LEFT JOIN brands b ON o.brand_id = b.id
-    WHERE o.id = ? AND o.user_id = ?
-  `).get(req.params.id, req.user.id);
+  let order;
+  if (req.user.role === 'salesman') {
+    // Salesman can view orders they placed
+    order = db.prepare(`
+      SELECT o.*, b.name as brand_name, b.short_name as brand_short_name,
+             u.company_name as dealer_company, u.contact_name as dealer_contact
+      FROM orders o
+      LEFT JOIN brands b ON o.brand_id = b.id
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.id = ? AND o.placed_by_salesman_id = ?
+    `).get(req.params.id, req.user.id);
+  } else {
+    order = db.prepare(`
+      SELECT o.*, b.name as brand_name, b.short_name as brand_short_name
+      FROM orders o
+      LEFT JOIN brands b ON o.brand_id = b.id
+      WHERE o.id = ? AND o.user_id = ?
+    `).get(req.params.id, req.user.id);
+  }
 
   if (!order) {
     return res.status(404).json({ error: 'Order not found' });

@@ -127,7 +127,29 @@ router.get('/me', (req, res) => {
     categoryDiscountMap[d.category] = d.discount_percent;
   }
 
-  res.json({ user, category_discounts: categoryDiscountMap });
+  // If salesman: fetch their linked dealers with each dealer's discounts
+  let linked_dealers = undefined;
+  if (user.role === 'salesman') {
+    const dealers = db.prepare(`
+      SELECT u.id, u.company_name, u.contact_name, u.phone, u.email,
+             u.discount_percent, u.address
+      FROM salesman_dealers sd
+      JOIN users u ON sd.dealer_id = u.id
+      WHERE sd.salesman_id = ? AND u.status = 'approved'
+      ORDER BY u.company_name
+    `).all(user.id);
+
+    // For each dealer, load their category discounts too
+    const getCatDiscs = db.prepare('SELECT category, discount_percent FROM user_category_discounts WHERE user_id = ?');
+    linked_dealers = dealers.map(d => {
+      const catDiscs = getCatDiscs.all(d.id);
+      const catDiscMap = {};
+      for (const cd of catDiscs) catDiscMap[cd.category] = cd.discount_percent;
+      return { ...d, category_discounts: catDiscMap };
+    });
+  }
+
+  res.json({ user, category_discounts: categoryDiscountMap, linked_dealers });
 });
 
 

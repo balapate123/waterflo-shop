@@ -28,7 +28,7 @@
   </header>
 
   <!-- HERO -->
-  <div class="landing-hero">
+  <div class="landing-hero" id="landingHero">
     <h1>Waterflo Pipes &amp; Fittings</h1>
     <p>Select a brand to browse products and place orders</p>
   </div>
@@ -50,9 +50,13 @@
       try {
         const res = await fetch('/api/auth/me');
         if (!res.ok) { window.location.href = '/login.html'; return; }
-        const { user } = await res.json();
+        const data = await res.json();
+        const user = data.user;
         document.getElementById('userInfo').textContent = user.company_name || user.contact_name;
         if (user.role === 'admin') document.getElementById('adminLink').style.display = '';
+        if (user.role === 'salesman' && data.linked_dealers) {
+          setTimeout(function() { renderDealerLanding(data.linked_dealers); }, 0);
+        }
 
         // Fetch brands user has access to
         const bRes = await fetch('/api/brands');
@@ -84,6 +88,20 @@
           <div class="brand-card-arrow">&rarr;</div>
         </a>`;
       }).join('');
+    }
+
+    function renderDealerLanding(dealers) {
+      var lh = document.getElementById('landingHero');
+      var currentDealer = localStorage.getItem('wf_salesman_dealer');
+      var html = '<div style="margin:16px auto;max-width:400px;background:rgba(255,255,255,0.1);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.2)">';
+      html += '<p style="margin-bottom:8px;font-weight:600">👤 Placing order on behalf of:</p>';
+      html += '<select id="landingDealerSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;color:#333;font-size:1rem" onchange="localStorage.setItem(\'wf_salesman_dealer\', this.value);">';
+      if (!currentDealer) html += '<option value="">-- Select Dealer --</option>';
+      dealers.forEach(function(d) {
+        html += '<option value="' + d.id + '"' + (currentDealer == d.id ? ' selected' : '') + '>' + d.company_name + '</option>';
+      });
+      html += '</select></div>';
+      lh.insertAdjacentHTML('beforeend', html);
     }
 
     async function handleLogout() {

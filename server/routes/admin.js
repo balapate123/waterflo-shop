@@ -132,7 +132,11 @@ router.put('/users/:id', (req, res) => {
     }
     updates.push('discount_percent = ?'); params.push(discount_percent);
   }
-  if (role !== undefined) { updates.push('role = ?'); params.push(role); }
+  if (role !== undefined) {
+    const validRoles = ['dealer', 'admin', 'salesman'];
+    if (!validRoles.includes(role)) return res.status(400).json({ error: 'Invalid role' });
+    updates.push('role = ?'); params.push(role);
+  }
   if (company_name !== undefined) { updates.push('company_name = ?'); params.push(company_name.trim()); }
   if (contact_name !== undefined) { updates.push('contact_name = ?'); params.push(contact_name.trim()); }
   if (phone !== undefined) { updates.push('phone = ?'); params.push(phone.trim()); }
@@ -188,6 +192,8 @@ router.delete('/users/:id', (req, res) => {
     db.prepare('DELETE FROM orders WHERE user_id = ?').run(userId);
     // Delete brand access
     db.prepare('DELETE FROM user_brands WHERE user_id = ?').run(userId);
+    // Delete salesman-dealer links (as either side)
+    db.prepare('DELETE FROM salesman_dealers WHERE salesman_id = ? OR dealer_id = ?').run(userId, userId);
     // Delete user
     db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   });
@@ -214,6 +220,63 @@ router.put('/users/:id/brands', (req, res) => {
   insertAll(brand_ids);
 
   res.json({ message: 'Brand access updated' });
+});
+
+// GET /api/admin/users/:id/dealers — get dealers linked to a salesman
+router.get('/users/:id/dealers', (req, res) => {
+  const db = req.app.get('db');
+  const userId = req.params.id;
+
+  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // Get currently linked dealers
+  const linked = db.prepare(`
+    SELECT u.id, u.company_name, u.contact_name, u.phone, u.email
+    FROM salesman_dealers sd
+    JOIN users u ON sd.dealer_id = u.id
+    WHERE sd.salesman_id = ?
+    ORDER BY u.company_name
+  `).all(userId);
+
+  // Get all approved dealers (for picker)
+  const allDealers = db.prepare(`
+    SELECT id, company_name, contact_name, phone, email
+    FROM users
+    WHERE role = 'dealer' AND status = 'approved'
+    ORDER BY company_name
+  `).all();
+
+  const linkedIds = new Set(linked.map(d => d.id));
+
+  res.json({
+    linked,
+    all_dealers: allDealers.map(d => ({ ...d, linked: linkedIds.has(d.id) }))
+  });
+});
+
+// PUT /api/admin/users/:id/dealers — set dealers for a salesman
+router.put('/users/:id/dealers', (req, res) => {
+  const db = req.app.get('db');
+  const userId = req.params.id;
+  const { dealer_ids } = req.body;
+
+  if (!Array.isArray(dealer_ids)) return res.status(400).json({ error: 'dealer_ids must be an array' });
+
+  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  db.prepare('DELETE FROM salesman_dealers WHERE salesman_id = ?').run(userId);
+
+  const insert = db.prepare('INSERT INTO salesman_dealers (salesman_id, dealer_id) VALUES (?, ?)');
+  const insertAll = db.transaction((ids) => {
+    for (const did of ids) {
+      insert.run(userId, did);
+    }
+  });
+  insertAll(dealer_ids);
+
+  res.json({ message: 'Dealer links updated' });
 });
 
 // ─── CATEGORY DISCOUNTS ──────────────────────────────────────────────────────
@@ -307,10 +370,12 @@ router.get('/orders', (req, res) => {
 
   let query = `
     SELECT o.*, u.company_name, u.contact_name, u.phone,
-           b.name as brand_name, b.short_name as brand_short_name, b.color as brand_color
+           b.name as brand_name, b.short_name as brand_short_name, b.color as brand_color,
+           sm.company_name as salesman_company, sm.contact_name as salesman_name
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
     LEFT JOIN brands b ON o.brand_id = b.id
+    LEFT JOIN users sm ON o.placed_by_salesman_id = sm.id
     WHERE 1=1
   `;
   const params = [];
@@ -332,10 +397,12 @@ router.get('/orders/:id', (req, res) => {
   const order = db.prepare(`
     SELECT o.*, u.company_name, u.contact_name, u.phone, u.email, u.address,
            u.discount_percent as user_discount_percent,
-           b.name as brand_name, b.short_name as brand_short_name, b.price_date as brand_price_date
+           b.name as brand_name, b.short_name as brand_short_name, b.price_date as brand_price_date,
+           sm.company_name as salesman_company, sm.contact_name as salesman_name, sm.phone as salesman_phone
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
     LEFT JOIN brands b ON o.brand_id = b.id
+    LEFT JOIN users sm ON o.placed_by_salesman_id = sm.id
     WHERE o.id = ?
   `).get(req.params.id);
 
@@ -586,6 +653,48 @@ router.get('/brands', (req, res) => {
   const db = req.app.get('db');
   const brands = db.prepare('SELECT * FROM brands ORDER BY name').all();
   res.json({ brands });
+});
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+
+router.get('/settings', (req, res) => {
+  const db = req.app.get('db');
+  const rows = db.prepare('SELECT key, value FROM settings').all();
+  const settings = {};
+  for (const row of rows) {
+    try { settings[row.key] = JSON.parse(row.value); } catch (e) { settings[row.key] = row.value; }
+  }
+  res.json({
+    gst_percent: settings.gst_percent !== undefined ? settings.gst_percent : 18,
+    other_charges: settings.other_charges || []
+  });
+});
+
+router.put('/settings', (req, res) => {
+  const db = req.app.get('db');
+  const { gst_percent, other_charges } = req.body;
+
+  const upsert = db.prepare(`
+    INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+  `);
+
+  const saveAll = db.transaction(() => {
+    if (gst_percent !== undefined) {
+      upsert.run('gst_percent', JSON.stringify(gst_percent));
+    }
+    if (other_charges !== undefined) {
+      upsert.run('other_charges', JSON.stringify(other_charges));
+    }
+  });
+
+  try {
+    saveAll();
+    res.json({ message: 'Settings saved' });
+  } catch (err) {
+    console.error('Settings save error:', err);
+    res.status(500).json({ error: 'Failed to save settings' });
+  }
 });
 
 module.exports = router;

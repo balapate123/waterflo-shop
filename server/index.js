@@ -67,6 +67,26 @@ try {
   console.error('Migration error (user_category_discounts):', e.message);
 }
 
+// Migrations: salesman_dealers junction table
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS salesman_dealers (
+    salesman_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    dealer_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (salesman_id, dealer_id)
+  )`);
+  console.log('Migration: salesman_dealers table ensured');
+} catch (e) {
+  console.error('Migration error (salesman_dealers):', e.message);
+}
+
+// Migrations: placed_by_salesman_id column on orders
+try {
+  db.prepare('SELECT placed_by_salesman_id FROM orders LIMIT 1').get();
+} catch (e) {
+  db.exec('ALTER TABLE orders ADD COLUMN placed_by_salesman_id INTEGER REFERENCES users(id)');
+  console.log('Migration: added placed_by_salesman_id to orders table');
+}
+
 // Database hardening: add missing indexes and triggers
 try {
   db.exec("CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)");
@@ -76,6 +96,24 @@ try {
       UPDATE orders SET updated_at = datetime('now') WHERE id = NEW.id;
     END`);
 } catch (e) { /* already exists */ }
+
+// Migrations: settings table for tax/charges
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  // Seed default GST if not exists
+  const existing = db.prepare("SELECT key FROM settings WHERE key = 'gst_percent'").get();
+  if (!existing) {
+    db.prepare("INSERT INTO settings (key, value) VALUES ('gst_percent', '18')").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('other_charges', '[]')").run();
+  }
+  console.log('Migration: settings table ensured');
+} catch (e) {
+  console.error('Migration error (settings):', e.message);
+}
 
 app.set('db', db);
 
@@ -196,6 +234,16 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/brands', require('./routes/brands'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/admin', require('./routes/admin'));
+
+// Public tax settings endpoint (no auth required — used by cart/quote)
+app.get('/api/settings/tax', (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM settings WHERE key IN (?, ?)').all('gst_percent', 'other_charges');
+  const result = { gst_percent: 18, other_charges: [] };
+  for (const row of rows) {
+    try { result[row.key] = JSON.parse(row.value); } catch (e) { result[row.key] = row.value; }
+  }
+  res.json(result);
+});
 
 // ─── 404 Handler ───────────────────────────────────────────────────────────────
 

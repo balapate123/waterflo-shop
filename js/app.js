@@ -16,6 +16,8 @@ var SUBCATEGORY_NAMES = {};
 var userDiscount = 0;           // legacy flat % — kept for fallback
 var userData = null;            // current user data from /api/auth/me
 var userCategoryDiscounts = {}; // { 'CPVC Pipes': 59.90, ... } from /api/auth/me
+var linkedDealers = window.linkedDealers || [];
+var taxSettings = { gst_percent: 18, other_charges: [] };
 
 // ─── TRADE CATEGORY MAPPING ─────────────────────────────────────────────────────
 // Maps (brandId + product category + subcategory) → trade discount category name
@@ -316,6 +318,28 @@ function cartDiscountAmt(){
 }
 function cartNetTotal()   { return cartTotal() - cartDiscountAmt(); }
 
+function cartGstAmt() {
+  var gst = taxSettings.gst_percent || 0;
+  return gst > 0 ? Math.round(cartNetTotal() * gst / 100 * 100) / 100 : 0;
+}
+
+function cartOtherChargesAmt() {
+  var net = cartNetTotal();
+  var total = 0;
+  (taxSettings.other_charges || []).forEach(function(ch) {
+    if (ch.type === 'percent') {
+      total += Math.round(net * ch.value / 100 * 100) / 100;
+    } else {
+      total += ch.value || 0;
+    }
+  });
+  return total;
+}
+
+function cartGrandTotal() {
+  return cartNetTotal() + cartGstAmt() + cartOtherChargesAmt();
+}
+
 function addToCart(code) {
   var p = PRODUCTS.find(function(x) { return x.code === code; });
   if (!p) return;
@@ -414,19 +438,33 @@ function updateCartUI() {
   var countEl = document.getElementById('cartItemCount');
 
   var hasDiscount = cartDiscountAmt() > 0;
-  if (hasDiscount && lines > 0) {
-    totalEl.innerHTML =
-      '<span style="text-decoration:line-through;color:#999;font-size:0.85em">' + fmtFull(cartTotal()) + '</span> '
-      + fmtFull(cartNetTotal());
-    var discLabel = Object.keys(userCategoryDiscounts).length > 0
-      ? 'category discounts applied'
-      : userDiscount + '% off';
-    countEl.innerHTML =
-      lines + ' item' + (lines !== 1 ? 's' : '')
-      + ' &middot; <span style="color:#2e7d32">' + discLabel + '</span>';
+  var gstAmt = cartGstAmt();
+  var grandTotal = cartGrandTotal();
+
+  if (lines > 0) {
+    // Show grand total (incl. GST)
+    if (hasDiscount) {
+      totalEl.innerHTML =
+        '<span style="text-decoration:line-through;color:#999;font-size:0.85em">' + fmtFull(cartTotal()) + '</span> '
+        + fmtFull(grandTotal);
+    } else {
+      totalEl.textContent = fmtFull(grandTotal);
+    }
+    var parts = [];
+    parts.push(lines + ' item' + (lines !== 1 ? 's' : ''));
+    if (hasDiscount) {
+      var discLabel = Object.keys(userCategoryDiscounts).length > 0
+        ? 'discounts applied'
+        : userDiscount + '% off';
+      parts.push('<span style="color:#2e7d32">' + discLabel + '</span>');
+    }
+    if (gstAmt > 0) {
+      parts.push('<span style="color:#666">incl. ' + taxSettings.gst_percent + '% GST</span>');
+    }
+    countEl.innerHTML = parts.join(' &middot; ');
   } else {
-    totalEl.textContent = fmtFull(cartTotal());
-    countEl.textContent = lines + ' item' + (lines !== 1 ? 's' : '');
+    totalEl.textContent = fmtFull(0);
+    countEl.textContent = '0 items';
   }
 }
 
@@ -605,7 +643,7 @@ function renderGridCard(p) {
       +     '<button class="qi-btn" onclick="cardQtyDelta(\'' + p.code + '\',-1)">\u2212</button>'
       +     '<input type="number" class="card-qty-input" value="1" min="1" max="999">'
       +     '<button class="qi-btn" onclick="cardQtyDelta(\'' + p.code + '\',1)">+</button>'
-      +   '</div>'
+      + '</div>'
       +   '<button class="add-btn" onclick="addToCart(\'' + p.code + '\')">+ Add to Cart</button>'
       + '</div>'
       : '')
@@ -822,10 +860,23 @@ function openQuote() {
   // Dealer info
   var dealerInfo = '';
   if (userData) {
-    dealerInfo = '<div class="quote-dealer">'
-      + '<div><strong>Dealer:</strong> ' + escapeHtml(userData.company_name) + '</div>'
-      + '<div>' + escapeHtml(userData.contact_name) + ' &bull; ' + escapeHtml(userData.phone) + '</div>'
-      + '</div>';
+    if (userData.role === 'salesman') {
+      var dId = parseInt(localStorage.getItem('wf_salesman_dealer'));
+      var d = linkedDealers.find(function(x) { return x.id === dId; });
+      if (d) {
+        dealerInfo = '<div class="quote-dealer">'
+          + '<div><strong>Dealer:</strong> ' + escapeHtml(d.company_name) + ' (' + escapeHtml(d.contact_name) + ')</div>'
+          + '<div><strong>Salesman:</strong> ' + escapeHtml(userData.contact_name) + '</div>'
+          + '</div>';
+      } else {
+        dealerInfo = '<div class="quote-dealer"><div>Select a dealer first.</div></div>';
+      }
+    } else {
+      dealerInfo = '<div class="quote-dealer">'
+        + '<div><strong>Dealer:</strong> ' + escapeHtml(userData.company_name) + '</div>'
+        + '<div>' + escapeHtml(userData.contact_name) + ' &bull; ' + escapeHtml(userData.phone) + '</div>'
+        + '</div>';
+    }
   }
 
   document.getElementById('quoteContent').innerHTML =
@@ -854,15 +905,34 @@ function openQuote() {
         + discountInfo
       : '')
     +   '<tr class="total-row">'
-    +     '<td colspan="' + (hasCategoryDiscounts ? '9' : '8') + '" class="tr"><strong>Estimated Total (excl. GST)</strong></td>'
+    +     '<td colspan="' + (hasCategoryDiscounts ? '9' : '8') + '" class="tr"><strong>Net Total</strong></td>'
     +     '<td class="tr"><strong>' + fmtFull(netTotal) + '</strong></td>'
     +   '</tr>'
+    +   (function() {
+          var taxRows = '';
+          var gstPct = taxSettings.gst_percent || 0;
+          var colSpanTax = hasCategoryDiscounts ? '9' : '8';
+          if (gstPct > 0) {
+            var gstAmt = Math.round(netTotal * gstPct / 100 * 100) / 100;
+            taxRows += '<tr><td colspan="' + colSpanTax + '" class="tr">GST (' + gstPct + '%)</td><td class="tr">' + fmtFull(gstAmt) + '</td></tr>';
+          }
+          var otherTotal = 0;
+          (taxSettings.other_charges || []).forEach(function(ch) {
+            var amt = ch.type === 'percent' ? Math.round(netTotal * ch.value / 100 * 100) / 100 : (ch.value || 0);
+            otherTotal += amt;
+            if (amt > 0) {
+              taxRows += '<tr><td colspan="' + colSpanTax + '" class="tr">' + escapeHtml(ch.name) + (ch.type === 'percent' ? ' (' + ch.value + '%)' : '') + '</td><td class="tr">' + fmtFull(amt) + '</td></tr>';
+            }
+          });
+          var grandTotal = netTotal + (gstPct > 0 ? Math.round(netTotal * gstPct / 100 * 100) / 100 : 0) + otherTotal;
+          taxRows += '<tr class="total-row" style="background:#e8eaf6"><td colspan="' + colSpanTax + '" class="tr"><strong>Grand Total</strong></td><td class="tr"><strong>' + fmtFull(grandTotal) + '</strong></td></tr>';
+          return taxRows;
+        })()
     +   (hasTbd ? '<tr><td colspan="' + (hasCategoryDiscounts ? '11' : '9') + '" class="quote-note">* Items with "\u2014" are contact-for-price and excluded from total</td></tr>' : '')
     +   '</tfoot>'
     + '</table>'
     + '</div>'
     + '<div class="quote-footer-note">'
-    +   '<p>\u2022 All rates are per selected unit, exclusive of GST</p>'
     +   (totalDiscountAmt > 0 ? '<p>\u2022 Trade discounts applied per product category as per agreement</p>' : '')
     +   '<p>\u2022 Prices subject to change without prior notice \u00B7 Subject to availability</p>'
     +   '<p>\u2022 Standard terms &amp; conditions apply</p>'
@@ -939,10 +1009,23 @@ function getOrderFormHTML() {
   return '<div class="order-cart-preview">'
     + '<div class="ocp-header">'
     +   '<strong>' + cartLineCount() + ' item' + (cartLineCount()!==1?'s':'') + '</strong>'
-    +   '<span>Est. Total: <strong>' + fmtFull(netTotal) + '</strong> + GST</span>'
+    +   '<span>Grand Total: <strong>' + fmtFull(cartGrandTotal()) + '</strong></span>'
     + '</div>'
     + lines
     + discountNote
+    + '<div style="text-align:right;font-size:0.82rem;margin-top:8px;padding-top:8px;border-top:1px solid #e0e0e0">'
+    + '<div>Net Total: ' + fmtFull(netTotal) + '</div>'
+    + '<div>GST (' + (taxSettings.gst_percent || 0) + '%): ' + fmtFull(cartGstAmt()) + '</div>'
+    + (function() {
+        var h = '';
+        (taxSettings.other_charges || []).forEach(function(ch) {
+          var amt = ch.type === 'percent' ? Math.round(netTotal * ch.value / 100 * 100) / 100 : (ch.value || 0);
+          h += '<div>' + escapeHtml(ch.name) + (ch.type === 'percent' ? ' (' + ch.value + '%)' : '') + ': ' + fmtFull(amt) + '</div>';
+        });
+        return h;
+      })()
+    + '<div style="font-weight:700;font-size:0.9rem;margin-top:4px">Grand Total: ' + fmtFull(cartGrandTotal()) + '</div>'
+    + '</div>'
     + '</div>'
     + '<form id="orderForm">'
     +   '<div class="form-group"><label>Notes (optional)</label>'
@@ -973,10 +1056,21 @@ function submitOrder(e) {
     };
   });
 
+  var payload = { brand_id: brandId, items: items, notes: formData.notes || '', discount_percent: userDiscount || 0 };
+  if (userData && userData.role === 'salesman') {
+    payload.dealer_id = parseInt(localStorage.getItem('wf_salesman_dealer'));
+    if (!payload.dealer_id) {
+      alert('Please select a dealer first.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '\uD83D\uDED2 Place Order';
+      return;
+    }
+  }
+
   fetch('/api/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ brand_id: brandId, items: items, notes: formData.notes || '', discount_percent: userDiscount || 0 })
+    body: JSON.stringify(payload)
   })
   .then(function(res) { return res.json().then(function(json) { return { ok: res.ok, json: json }; }); })
   .then(function(result) {
@@ -1007,7 +1101,9 @@ function submitOrder(e) {
       +   (order.total_amount > 0
             ? '<br><br>Subtotal: ' + fmtFull(order.total_amount)
               + (order.discount_percent > 0 ? '<br>Discount: ' + order.discount_percent + '% (&minus;' + fmtFull(order.total_amount - order.net_amount) + ')' : '')
-              + '<br><strong>Net Total: ' + fmtFull(order.net_amount || order.total_amount) + ' + GST</strong>'
+              + '<br>Net Total: ' + fmtFull(order.net_amount || order.total_amount)
+              + '<br>GST (' + (taxSettings.gst_percent || 0) + '%): ' + fmtFull(Math.round((order.net_amount || order.total_amount) * (taxSettings.gst_percent || 0) / 100 * 100) / 100)
+              + '<br><strong>Grand Total: ' + fmtFull((order.net_amount || order.total_amount) + Math.round((order.net_amount || order.total_amount) * (taxSettings.gst_percent || 0) / 100 * 100) / 100 + cartOtherChargesAmt()) + '</strong>'
             : '')
       + '</div>'
       + '<button class="btn-primary" onclick="closeOrderSuccess()">Done</button>'
@@ -1033,6 +1129,40 @@ function handleLogout() {
   fetch('/api/auth/logout', { method: 'POST' })
     .then(function() { window.location.href = '/login.html'; })
     .catch(function() { window.location.href = '/login.html'; });
+}
+
+function renderDealerPickerStore() {
+  var header = document.querySelector('.header');
+  if (!header) return;
+  var currentDealer = localStorage.getItem('wf_salesman_dealer');
+  var html = '<div style="background:#f9a825;color:#1a237e;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;font-weight:600">';
+  html += '<span>👤 Salesman Mode</span>';
+  html += '<select id="storeDealerSelect" style="padding:4px;border-radius:4px;border:none;max-width:200px" onchange="changeStoreDealer(this.value)">';
+  if (!currentDealer) html += '<option value="">-- Select Dealer --</option>';
+  linkedDealers.forEach(function(d) {
+    html += '<option value="' + d.id + '"' + (currentDealer == d.id ? ' selected' : '') + '>' + escapeHtml(d.company_name) + '</option>';
+  });
+  html += '</select></div>';
+  header.insertAdjacentHTML('afterend', html);
+}
+
+function changeStoreDealer(dealerId) {
+  localStorage.setItem('wf_salesman_dealer', dealerId);
+  applySelectedDealer();
+}
+
+function applySelectedDealer() {
+  if (userData && userData.role !== 'salesman') return;
+  var dealerId = parseInt(localStorage.getItem('wf_salesman_dealer'));
+  var d = linkedDealers.find(function(x) { return x.id === dealerId; });
+  if (d) {
+    userDiscount = d.discount_percent || 0;
+    userCategoryDiscounts = d.category_discounts || {};
+  } else {
+    userDiscount = 0;
+    userCategoryDiscounts = {};
+  }
+  updateCartUI();
 }
 
 // ─── BRAND THEMING ──────────────────────────────────────────────────────────────
@@ -1077,9 +1207,19 @@ function init() {
     if (data && data.category_discounts) {
       userCategoryDiscounts = data.category_discounts;
     }
+    if (userData && userData.role === 'salesman' && data && data.linked_dealers) {
+      linkedDealers = data.linked_dealers;
+      renderDealerPickerStore();
+      applySelectedDealer();
+    }
     // Re-render cart UI now that discounts are known
     updateCartUI();
   }).catch(function() {});
+
+  // Fetch tax settings (GST + other charges)
+  fetch('/api/settings/tax').then(function(res) { return res.ok ? res.json() : null; })
+    .then(function(data) { if (data) { taxSettings = data; updateCartUI(); } })
+    .catch(function() {});
 
   // Event listeners
   document.getElementById('cartBtn').addEventListener('click', openCart);
