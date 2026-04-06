@@ -32,7 +32,12 @@
       "Bash(ls \"/c/Users/atbha/Projects/AntiGravity Projects/waterflo/\"*.xlsx)",
       "Bash(ls \"/c/Users/atbha/Projects/AntiGravity Projects/waterflo/\"*.xls)",
       "Bash(npm install:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python3)",
+      "Bash(tasklist)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)",
+      "Bash(cmd.exe:*)"
     ]
   }
 }
