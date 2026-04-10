@@ -392,7 +392,492 @@
   }
 
 
+  // ─── uPVC ORDER FORM (Sheet 3) — Surefit® ──────────────────────────────────
+
+  // Standard 10 sizes for uPVC pipes & main fittings
+  var UPVC_SIZES = ['\u00bd"', '\u00be"', '1"', '1\u00bc"', '1\u00bd"', '2"', '2\u00bd"', '3"', '4"', '6"'];
+
+  function buildUPVCForm(order, items, party) {
+    var L = buildItemLookup(items);
+    var cv = function(code, uf) { return cellVal(L, code, uf); };
+
+    var h = '';
+    h += '<div class="form-page">';
+    h += '<table class="of">';
+
+    // ── Row 0: Header ──
+    h += '<tr class="hdr">';
+    h += '<td colspan="3" class="brand-name">Surefit\u00ae</td>';
+    h += '<td colspan="10" class="company-name">WATERFLO PIPING SYSTEM</td>';
+    h += '</tr>';
+
+    // ── Row 1: Form title ──
+    h += '<tr class="hdr">';
+    h += '<td colspan="13" class="form-title">uPVC ORDER FORM</td>';
+    h += '</tr>';
+
+    // ── Row 2: Party name ──
+    h += '<tr class="info-row">';
+    h += '<td colspan="13" class="party-field">PARTY NAME:- <span class="fill-val">' + esc(party.company_name) + '</span></td>';
+    h += '</tr>';
+
+    // ── Row 3: Date, State, Delivery ──
+    h += '<tr class="info-row">';
+    h += '<td colspan="5" class="party-field">ORDER DATE:- <span class="fill-val">' + fmtDate(order.created_at) + '</span></td>';
+    h += '<td colspan="3" class="party-field">STATE:- <span class="fill-val">' + esc(party.state || '') + '</span></td>';
+    h += '<td colspan="5" class="party-field">DELIVERY:- <span class="fill-val"></span></td>';
+    h += '</tr>';
+
+    // ── FITTING SIZE header ──
+    h += '<tr class="sec-hdr"><td colspan="3" class="lbl">FITTING SIZE</td>';
+    UPVC_SIZES.forEach(function(s) { h += '<td class="c sz">' + s + '</td>'; });
+    h += '</tr>';
+
+    // ── Pipe rows ──
+    // PIPE (3mtr.): all 10 sizes fillable
+    var pipe3m = ['UP8015','UP8020','UP8025','UP8032','UP8040','UP8050','UP8065','UP8080','UP80100','UP80150'];
+    h += pipeRow('PIPE (3mtr.)', pipe3m, 'bundle3m', [], L);
+
+    // PIPE (5mtr.): all 10 sizes fillable
+    var pipe5m = ['UP8015','UP8020','UP8025','UP8032','UP8040','UP8050','UP8065','UP8080','UP80100','UP80150'];
+    h += pipeRow('PIPE (5mtr.)', pipe5m, 'bundle5m', [], L);
+
+    // ── Main Fitting rows (SCH 80) ──
+    // ELBOW: all sizes
+    h += fittingRow('ELBOW', ['UFE8015','UFE8020','UFE8025','UFE8032','UFE8040','UFE8050','UFE65','UFE80','UFE100','UFE150'], [], L);
+    // TEE
+    h += fittingRow('TEE', ['UFT8015','UFT8020','UFT8025','UFT8032','UFT8040','UFT8050','UFT65','UFT80','UFT100','UFT150'], [], L);
+    // COUPLER
+    h += fittingRow('COUPLER', ['UFC8015','UFC8020','UFC8025','UFC8032','UFC8040','UFC8050','UFC65','UFC80','UFC100','UFC150'], [], L);
+    // M.T.A.
+    h += fittingRow('M.T.A.', ['UFM8015','UFM8020','UFM8025','UFM8032','UFM8040','UFM8050','UFM65','UFM80','UFM100','UFM150'], [], L);
+    // F.T.A.
+    h += fittingRow('F.T.A.', ['UFF8015','UFF8020','UFF8025','UFF8032','UFF8040','UFF8050','UFF65','UFF80','UFF100','UFF150'], [], L);
+    // ELBOW 45º
+    h += fittingRow('ELBOW 45\u00ba', ['UFE458015','UFE458020','UFE458025','UFE458032','UFE458040','UFE458050','UFE4565','UFE4580','UFE45100','UFE45150'], [], L);
+    // END CAP
+    h += fittingRow('END CAP', ['UFEC8015','UFEC8020','UFEC8025','UFEC8032','UFEC8040','UFEC8050','UFEC65','UFEC80','UFEC100','UFEC150'], [], L);
+    // UNION: 6" is "-"
+    h += fittingRow('UNION', ['UFU8015','UFU8020','UFU8025','UFU8032','UFU8040','UFU8050','UFU65','UFU80','UFU100',null], [9], L);
+    // BALL VALVE: 2½"-6" are "-"
+    h += fittingRow('BALL VALVE', ['UFBV15','UFBV20','UFBV25','UFBV32','UFBV40','UFBV50',null,null,null,null], [6,7,8,9], L);
+    // BALL VALVE (COMP): 2½"-6" are "-"
+    h += fittingRow('BALL VALVE (COMP)', ['UFCBV15','UFCBV20','UFCBV25','UFCBV32','UFCBV40','UFCBV50',null,null,null,null], [6,7,8,9], L);
+    // BALL VALVE (LONG): 6" is "-"
+    h += fittingRow('BALL VALVE (LONG)', ['UFCBVL15','UFCBVL20','UFCBVL25','UFCBVL32','UFCBVL40','UFCBVL50','UFCBVL65','UFCBVL80','UFCBVL100',null], [9], L);
+    // BALL VALVE (LONG THR): 2½"-6" are "-"
+    h += fittingRow('BALL VALVE (LONG THR)', ['UFCTBVL15','UFCTBVL20','UFCTBVL25','UFCTBVL32','UFCTBVL40','UFCTBVL50',null,null,null,null], [6,7,8,9], L);
+    // FLANGE: ½" "-", ¾" "-", 1¼" "-", 6" "-"
+    h += fittingRow('FLANGE', [null,null,'UFFG25',null,'UFFG40','UFFG50','UFFG65','UFFG80','UFFG100',null], [0,1,3,9], L);
+    // T.CON. SOCKET: 1¼" "-", 1½" "-", 6" "-"
+    h += fittingRow('T.CON. SOCKET', ['UFTCS8015','UFTCS8020','UFTCS8025',null,null,'UFTCS8050','UFTCS65','UFTCS80','UFTCS100',null], [3,4,9], L);
+    // T. CON. (Thr): 2½"-6" are "-"
+    h += fittingRow('T. CON. (Thr)', ['UFTC8015','UFTC8020','UFTC8025','UFTC8032','UFTC8040','UFTC8050',null,null,null,null], [6,7,8,9], L);
+    // BRASS M.T.A.: 6" is "-"
+    h += fittingRow('BRASS M.T.A.', ['UFBM15','UFBM20','UFBM25','UFBM32','UFBM40','UFBM50','UFBM65','UFBM80','UFBM100',null], [9], L);
+    // BRASS F.T.A.: 6" is "-"
+    h += fittingRow('BRASS F.T.A.', ['UFBF15','UFBF20','UFBF25','UFBF32','UFBF40','UFBF50','UFBF65','UFBF80','UFBF100',null], [9], L);
+    // N.R.V: ½" "-", 2"-6" are "-"
+    h += fittingRow('N.R.V', [null,'UFNRV20','UFNRV25','UFNRV32','UFNRV40',null,null,null,null,null], [0,5,6,7,8,9], L);
+
+    // ── BRASS / REDUCING FITTINGS SECTION ──
+    // Header: ½" | ¾" | 1" | ¾"x½" | 1"x½" | 1"x¾" | - | ¾"x½" | 1"x½" | 1"x¾"
+    var BRASS_SIZES_U = ['\u00bd"', '\u00be"', '1"', '\u00be"x\u00bd"', '1"x\u00bd"', '1"x\u00be"', '', '\u00be"x\u00bd"', '1"x\u00bd"', '1"x\u00be"'];
+    h += '<tr class="sec-hdr"><td colspan="3" class="lbl">FITTING SIZE</td>';
+    BRASS_SIZES_U.forEach(function(s, i) {
+      if (i === 6) h += '<td class="c na">-</td>';
+      else h += '<td class="c sz">' + s + '</td>';
+    });
+    h += '</tr>';
+
+    // BRASS ELBOW: 1"x¾" = "-" | R. ELBOW
+    h += upvcMixedRow('BRASS ELBOW', ['UFBE15','UFBE20','UFBE25','UFBE2015','UFBE2515',null], [5], 'R. ELBOW', ['UFRE802015','UFRE802515','UFRE802520'], [], L);
+    // BRASS TEE: ¾" = "-" | B. FTA
+    h += upvcMixedRow('BRASS TEE', ['UFBT15',null,'UFBT25','UFBT2015','UFBT2515','UFBT2520'], [1], 'B. FTA', ['UFBF2015','UFBF2515','UFBF2520'], [], L);
+    // THR. ELBOW: ¾" = "-" | B. MTA
+    h += upvcMixedRow('THR. ELBOW', ['UFET802015',null,'UFET8025','UFET802515','UFET802520',null], [1,5], 'B. MTA', ['UFBM2015','UFBM2515','UFBM2520'], [], L);
+    // THR. TEE: ¾" = "-", ¾"x½" = "-"
+    h += upvcMixedRow('THR. TEE', ['UFTT8015',null,'UFTT8025',null,'UFTT802515','UFTT802520'], [1,3], '', [null,null,null], [0,1,2], L);
+
+    // ── SCH 40 FITTINGS SECTION ──
+    // Header: ½" | ¾" | 1" | 1¼" | 1½" | 2" | - | ½" | ¾" | 1"
+    h += '<tr class="sec-hdr"><td colspan="3" class="lbl">FITTING SIZE</td>';
+    ['\u00bd"','\u00be"','1"','1\u00bc"','1\u00bd"','2"','','\u00bd"','\u00be"','1"'].forEach(function(s, i) {
+      if (i === 6) h += '<td class="c na">-</td>';
+      else h += '<td class="c sz">' + s + '</td>';
+    });
+    h += '</tr>';
+
+    // ELBOW (40) | CROSS TEE
+    h += upvcMixedRow40('ELBOW (40)', ['UFE4015','UFE4020','UFE4025','UFE4032','UFE4040','UFE4050'], [], 'CROSS TEE', ['UFCT4015','UFCT4020','UFCT4025'], [], L);
+    // TEE (40) | ELBOW 45°(40)
+    h += upvcMixedRow40('TEE (40)', ['UFT4015','UFT4020','UFT4025','UFT4032','UFT4040','UFT4050'], [], 'ELBOW 45\u00ba(40)', ['UFE454015','UFE454020','UFE454025'], [], L);
+    // COUPLER (40) | LONG PLUG: ¾" "-", 1" "-"
+    h += upvcMixedRow40('COUPLER (40)', ['UFC4015','UFC4020','UFC4025','UFC4032','UFC4040','UFC4050'], [], 'LONG PLUG', ['UFLPW15',null,null], [1,2], L);
+    // M.T.A (40) | CV LONG: 1" "-"
+    h += upvcMixedRow40('M.T.A (40)', ['UFM4015','UFM4020','UFM4025','UFM4032','UFM4040','UFM4050'], [], 'CV LONG', ['UFCVLT15','UFCVLT20',null], [2], L);
+    // F.T.A. (40) | CV SHORT: 1" "-"
+    h += upvcMixedRow40('F.T.A. (40)', ['UFF4015','UFF4020','UFF4025','UFF4032','UFF4040','UFF4050'], [], 'CV SHORT', ['UFCVST15','UFCVST20',null], [2], L);
+
+    // ── REDUCER SECTION 1 ──
+    var RED1U_SIZES = ['\u00be"x\u00bd"','1"x\u00bd"','1"x\u00be"','1\u00bc"x\u00bd"','1\u00bc"x\u00be"','1\u00bc"x1"','1\u00bd"x\u00bd"','1\u00bd"x\u00be"','1\u00bd"x1"','1\u00bd"x1\u00bc"'];
+    h += '<tr class="sec-hdr"><td colspan="3" class="lbl">REDUCING SIZE</td>';
+    RED1U_SIZES.forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+
+    h += fittingRow('R. TEE (80)', ['UFRT802015','UFRT802515','UFRT802520','UFRT803215','UFRT803220','UFRT803225','UFRT804015','UFRT804020','UFRT804025','UFRT804032'], [], L);
+    h += fittingRow('R. COUPLER (80)', ['UFRC802015','UFRC802515','UFRC802520','UFRC803215','UFRC803220','UFRC803225','UFRC804015','UFRC804020','UFRC804025','UFRC804032'], [], L);
+    h += fittingRow('R. BUSH (80)', ['UFRB402015','UFRB802515','UFRB802520','UFRB803215','UFRB803220','UFRB803225','UFRB804015','UFRB804020','UFRB804025','UFRB804032'], [], L);
+
+    // ── REDUCER SECTION 2 ──
+    var RED2U_SIZES = ['2"x\u00bd"','2"x\u00be"','2"x1"','2"x1\u00bc"','2"x1\u00bd"','2\u00bd"x1"','2\u00bd"x1\u00bd"','2\u00bd"x2"','3"x1\u00bd"','3"x2"'];
+    h += '<tr class="sec-hdr"><td colspan="3" class="lbl">REDUCING SIZE</td>';
+    RED2U_SIZES.forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+
+    h += fittingRow('R. TEE (80)', ['UFRT805015','UFRT805020','UFRT805025','UFRT805032','UFRT805040','UFRT6525','UFRT6540','UFRT6550','UFRT8040','UFRT8050'], [], L);
+    // R. COUPLER: 2½"x1" = "-", 3"x1½" = "-"
+    h += fittingRow('R. COUPLER (80)', ['UFRC805015','UFRC805020','UFRC805025','UFRC805032','UFRC805040',null,'UFRC6540','UFRC6550',null,'UFRC8050'], [5,8], L);
+    // R. BUSH: 2½"x1" = "-", 2½"x1½" = "-", 3"x1½" = "-"
+    h += fittingRow('R. BUSH (80)', ['UFRB805015','UFRB805020','UFRB805025','UFRB805032','UFRB805040',null,null,'UFRB6550',null,'UFRB8050'], [5,6,8], L);
+
+    // ── REDUCER SECTION 3 ──
+    var RED3U_SIZES = ['3"x2\u00bd"','4"x1\u00bd"','4"x2"','4"x2\u00bd"','4"x3"','6"x2"','6"x2\u00bd"','6"x3"','6"x4"',''];
+    h += '<tr class="sec-hdr"><td colspan="3" class="lbl">REDUCING SIZE</td>';
+    RED3U_SIZES.forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+
+    // R. TEE: 6"x2" = "-", 6"x3" = "-", last = "-"
+    h += fittingRow('R. TEE (80)', ['UFRT8065','UFRT10040','UFRT10050','UFRT10065','UFRT10080',null,'UFRT15065',null,'UFRT150100',null], [5,7,9], L);
+    // R. COUPLER: 4"x1½" = "-", 6"x2" = "-", 6"x3" = "-", last = "-"
+    h += fittingRow('R. COUPLER (80)', ['UFRC8065',null,'UFRC10050','UFRC10065','UFRC10080',null,'UFRC150100',null,null,null], [1,5,7,8,9], L);
+    // R. BUSH: 4"x1½" = "-", 6"x2½" = "-", last = "-"
+    h += fittingRow('R. BUSH (80)', ['UFRB8065',null,'UFRB10050','UFRB10065','UFRB10080','UFRB15050',null,'UFRB15080','UFRB150100',null], [1,6,9], L);
+
+    // ── Footer rows ──
+    h += '<tr class="data-row"><td colspan="3" class="lbl">BOX (B) :-</td>';
+    h += '<td class="c"></td><td class="c"></td><td class="c"></td>';
+    h += '<td colspan="3" class="lbl">ITEM:-</td>';
+    h += '<td colspan="4" class="lbl">TOTAL WT:-</td>';
+    h += '</tr>';
+    h += '<tr class="data-row"><td colspan="3" class="lbl">BOX (S) :-</td>';
+    for (var i = 0; i < 10; i++) h += '<td class="c"></td>';
+    h += '</tr>';
+
+    h += '</table>';
+    h += '</div>'; // .form-page
+
+    return h;
+  }
+
+  // Helper: uPVC mixed row (brass section) — left 6 cols + separator + right 3 cols
+  function upvcMixedRow(leftLabel, leftCodes, leftUnavail, rightLabel, rightCodes, rightUnavail, L) {
+    var h = '<tr class="data-row">';
+    h += '<td colspan="3" class="lbl">' + esc(leftLabel) + '</td>';
+    // Left: 6 size columns (½", ¾", 1", ¾"x½", 1"x½", 1"x¾")
+    for (var i = 0; i < 6; i++) {
+      if (leftUnavail.indexOf(i) >= 0 || leftCodes[i] === null) {
+        h += '<td class="c na">-</td>';
+      } else {
+        h += dc(cellVal(L, leftCodes[i]), false);
+      }
+    }
+    // Separator / right label
+    if (rightLabel) {
+      h += '<td class="c mix-lbl rlbl">' + esc(rightLabel) + '</td>';
+    } else {
+      h += '<td class="c na">-</td>';
+    }
+    // Right: 3 size columns (¾"x½", 1"x½", 1"x¾")
+    for (var j = 0; j < 3; j++) {
+      if (rightUnavail.indexOf(j) >= 0 || rightCodes[j] === null) {
+        h += '<td class="c na">-</td>';
+      } else {
+        h += dc(cellVal(L, rightCodes[j]), false);
+      }
+    }
+    h += '</tr>';
+    return h;
+  }
+
+  // Helper: uPVC mixed row for SCH 40 section — left 6 cols + separator + right 3 cols
+  function upvcMixedRow40(leftLabel, leftCodes, leftUnavail, rightLabel, rightCodes, rightUnavail, L) {
+    var h = '<tr class="data-row">';
+    h += '<td colspan="3" class="lbl">' + esc(leftLabel) + '</td>';
+    // Left: 6 size columns (½", ¾", 1", 1¼", 1½", 2")
+    for (var i = 0; i < 6; i++) {
+      if (leftUnavail.indexOf(i) >= 0 || leftCodes[i] === null) {
+        h += '<td class="c na">-</td>';
+      } else {
+        h += dc(cellVal(L, leftCodes[i]), false);
+      }
+    }
+    // Separator / right label
+    h += '<td class="c mix-lbl rlbl">' + esc(rightLabel) + '</td>';
+    // Right: 3 size columns (½", ¾", 1")
+    for (var j = 0; j < 3; j++) {
+      if (rightUnavail.indexOf(j) >= 0 || rightCodes[j] === null) {
+        h += '<td class="c na">-</td>';
+      } else {
+        h += dc(cellVal(L, rightCodes[j]), false);
+      }
+    }
+    h += '</tr>';
+    return h;
+  }
+
   // ─── Placeholder forms for sheets 2-6 ──────────────────────────────────────
+
+  // ─── SWR ORDER FORM (Sheet 4) — ClickFit + Selfit ────────────────────────
+
+  // Helper: 4-col SWR data row (label + 4 size cells)
+  function swrRow4(label, codes, unavail, L) {
+    var h = '<tr class="data-row"><td class="lbl">' + esc(label) + '</td>';
+    for (var i = 0; i < 4; i++) {
+      if (unavail.indexOf(i) >= 0) h += '<td class="c na">-</td>';
+      else { var v = codes[i] ? cellVal(L, codes[i]) : ''; h += '<td class="c' + (v ? ' filled' : '') + '">' + esc(v) + '</td>'; }
+    }
+    h += '</tr>';
+    return h;
+  }
+
+  // Helper: 6-col SWR data row (label + 6 size cells)
+  function swrRow6(label, codes, unavail, L) {
+    var h = '<tr class="data-row"><td class="lbl">' + esc(label) + '</td>';
+    for (var i = 0; i < 6; i++) {
+      if (unavail.indexOf(i) >= 0) h += '<td class="c na">-</td>';
+      else { var v = codes[i] ? cellVal(L, codes[i]) : ''; h += '<td class="c' + (v ? ' filled' : '') + '">' + esc(v) + '</td>'; }
+    }
+    h += '</tr>';
+    return h;
+  }
+
+  function buildSWRForm(order, items, party) {
+    var L = buildItemLookup(items);
+    var h = '<div class="form-page swr-form">';
+
+    // ══ HEADER ══
+    h += '<table class="of swr-full">';
+    h += '<tr class="hdr"><td class="company-name" style="text-align:center">WATERFLO PIPING SYSTEM</td></tr>';
+    h += '<tr class="hdr"><td class="form-title">SWR &amp; COMMON SWR FITTINGS</td></tr>';
+    h += '<tr class="info-row"><td class="party-field">PARTY NAME:- <span class="fill-val">' + esc(party.company_name) + '</span></td></tr>';
+    h += '<tr class="info-row"><td class="party-field">';
+    h += 'ORDER DATE:- <span class="fill-val">' + fmtDate(order.created_at) + '</span>';
+    h += ' &nbsp;&nbsp;&nbsp; LORRY NO:- <span class="fill-val"></span>';
+    h += ' &nbsp;&nbsp;&nbsp; STATE:- <span class="fill-val">' + esc(party.state || '') + '</span>';
+    h += ' &nbsp;&nbsp;&nbsp; DELIVERY:- <span class="fill-val"></span>';
+    h += '</td></tr>';
+    h += '</table>';
+
+    // ══ SECTION 1: SWR FITTINGS (Clickfit | Selfit) ══
+    h += '<table class="of swr-wrap"><tr>';
+
+    // ── LEFT: Clickfit SWR Fittings ──
+    h += '<td class="swr-cell"><table class="of swr-inner">';
+    h += '<tr class="sec-hdr"><td colspan="5" class="swr-sec-title">WATERFLO CLICKFIT SWR FITTINGS</td></tr>';
+    h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
+    ['75','90','110','160'].forEach(function(s) { h += '<td class="c sz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow4('BEND 87.5\u00b0', ['CSFB75','CSFB90','CSFB110','CSFB160'], [], L);
+    h += swrRow4('DOOR BEND 87.5\u00b0', ['CSFDB75','CSFDB90','CSFDB110','CSFDB160'], [], L);
+    h += swrRow4('SINGLE TEE', ['CSFST75','CSFST90','CSFST110','CSFST160'], [], L);
+    h += swrRow4('DOOR TEE', ['CSFSTD75','CSFSTD90','CSFSTD110','CSFSTD160'], [], L);
+    h += swrRow4('BEND 45\u00b0', ['CSFB4575','CSFB4590','CSFB45110','CSFB45160'], [], L);
+    h += swrRow4('COUPLER', ['CSFC75','CSFC90','CSFC110','CSFC160'], [], L);
+    h += swrRow4('SINGLE Y', ['CSFY75','CSFY90','CSFY110',null], [3], L);
+    h += swrRow4('DOOR Y', ['CSFYD75','CSFYD90','CSFYD110',null], [3], L);
+    h += swrRow4('CROSS TEE', ['CSFCT75','CSFCT90','CSFCT110',null], [3], L);
+    h += swrRow4('CLEANSING PIPE', ['CSFCP75',null,'CSFCP110',null], [1,3], L);
+    h += swrRow4('DOUBLE Y', ['CSFDBY75',null,'CSFDBY110',null], [1,3], L);
+    h += swrRow4('DOOR DOUBLE Y', ['CSFDDBY75',null,'CSFDDBY110',null], [1,3], L);
+    h += swrRow4('SWEPT TEE', [null,null,'CSFSPT110',null], [0,1,3], L);
+    h += swrRow4('DOOR SWEPT TEE', [null,null,'CSFDSPT110',null], [0,1,3], L);
+    // Reducer sub-section
+    h += '<tr class="sec-hdr"><td class="lbl">RED. SIZE</td>';
+    ['110x63','110x75','110x90','160x110'].forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow4('REDUCER', [null,'CSFR1075','CSFR1090','CSFR16110'], [0], L);
+    h += swrRow4('REDUCING TEE', [null,'CSFRT11075',null,null], [0,2,3], L);
+    h += swrRow4('DOOR RED TEE', [null,'CSFDRT11075',null,null], [0,2,3], L);
+    h += swrRow4('REDUCING Y', [null,'CSFRY11075',null,null], [0,2,3], L);
+    h += swrRow4('DOOR RED Y', [null,'CSFDRY11075',null,null], [0,2,3], L);
+    h += '</table></td>';
+
+    // ── RIGHT: Selfit SWR Fittings (no product codes yet) ──
+    h += '<td class="swr-cell"><table class="of swr-inner">';
+    h += '<tr class="sec-hdr"><td colspan="5" class="swr-sec-title">WATERFLO SELFIT SWR FITTINGS</td></tr>';
+    h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
+    ['75','90','110','160'].forEach(function(s) { h += '<td class="c sz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow4('BEND 87.5\u00b0', [null,null,null,null], [], L);
+    h += swrRow4('DOOR BEND 87.5\u00b0', [null,null,null,null], [], L);
+    h += swrRow4('SINGLE TEE', [null,null,null,null], [], L);
+    h += swrRow4('DOOR TEE', [null,null,null,null], [], L);
+    h += swrRow4('BEND 45\u00b0', [null,null,null,null], [], L);
+    h += swrRow4('COUPLER', [null,null,null,null], [], L);
+    h += swrRow4('SINGLE Y', [null,null,null,null], [3], L);
+    h += swrRow4('DOOR Y', [null,null,null,null], [3], L);
+    h += swrRow4('CROSS TEE', [null,null,null,null], [3], L);
+    h += swrRow4('CLEANSING PIPE', [null,null,null,null], [1,3], L);
+    h += swrRow4('DOUBLE Y', [null,null,null,null], [1,3], L);
+    h += swrRow4('DOOR DOUBLE Y', [null,null,null,null], [1,3], L);
+    h += swrRow4('SWEPT TEE', [null,null,null,null], [0,1,3], L);
+    h += swrRow4('DOOR SWEPT TEE', [null,null,null,null], [0,1,3], L);
+    h += '<tr class="sec-hdr"><td class="lbl">RED. SIZE</td>';
+    ['110x63','110x75','110x90','160x110'].forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow4('REDUCER', [null,null,null,null], [0], L);
+    h += swrRow4('REDUCING TEE', [null,null,null,null], [0,2,3], L);
+    h += swrRow4('DOOR RED TEE', [null,null,null,null], [0,2,3], L);
+    h += swrRow4('REDUCING Y', [null,null,null,null], [2,3], L);
+    h += swrRow4('DOOR RED Y', [null,null,null,null], [0,2,3], L);
+    h += '</table></td>';
+
+    h += '</tr></table>';
+
+    // ══ SECTION 2: LW SWR FITTINGS ══
+    h += '<table class="of swr-wrap"><tr>';
+
+    // ── LEFT: LW SWR (Clickfit Ring) — sizes 75, 110 only ──
+    h += '<td class="swr-cell"><table class="of swr-inner">';
+    h += '<tr class="sec-hdr"><td colspan="5" class="swr-sec-title" style="font-size:6px">WATERFLO LW SWR FITTINGS (Clickfit Ring)</td></tr>';
+    h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
+    h += '<td class="c sz">75</td><td class="c sz">110</td><td class="c na">-</td><td class="c na">-</td>';
+    h += '</tr>';
+    h += swrRow4('BEND 87.5\u00b0', [null,null,null,null], [2,3], L);
+    h += swrRow4('DOOR BEND 87.5\u00b0', [null,null,null,null], [2,3], L);
+    h += swrRow4('SINGLE TEE', [null,null,null,null], [2,3], L);
+    h += swrRow4('DOOR TEE', [null,null,null,null], [2,3], L);
+    h += swrRow4('BEND 45\u00b0', [null,null,null,null], [2,3], L);
+    h += swrRow4('SINGLE Y', [null,null,null,null], [2,3], L);
+    h += swrRow4('DOOR Y', [null,null,null,null], [2,3], L);
+    h += swrRow4('COUPLER', [null,null,null,null], [2,3], L);
+    h += '</table></td>';
+
+    // ── RIGHT: SFT-LW SWR — sizes 75, 110, 90, 160 ──
+    h += '<td class="swr-cell"><table class="of swr-inner">';
+    h += '<tr class="sec-hdr"><td colspan="5" class="swr-sec-title" style="font-size:6px">WATERFLO SFT-LW SWR FITTINGS</td></tr>';
+    h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
+    h += '<td class="c sz">75</td><td class="c sz">110</td><td class="c sz">90</td><td class="c sz">160</td>';
+    h += '</tr>';
+    h += swrRow4('BEND 45\u00b0', [null,null,null,null], [2,3], L);
+    h += swrRow4('BEND 87.5\u00b0', [null,null,null,null], [2,3], L);
+    h += swrRow4('DOOR BEND 87.5\u00b0', [null,null,null,null], [2,3], L);
+    h += swrRow4('SINGLE TEE', [null,null,null,null], [2,3], L);
+    h += swrRow4('DOOR TEE', [null,null,null,null], [2,3], L);
+    h += '<tr class="data-row"><td class="lbl"></td>';
+    h += '<td class="c na">-</td><td class="c na">-</td><td class="c na">-</td><td class="c na">-</td></tr>';
+    h += swrRow4('DOOR CAP', [null,null,null,null], [3], L);
+    h += swrRow4('CLICKFIT RING', ['CK75','CK110','CK90','CK160'], [], L);
+    h += '</table></td>';
+
+    h += '</tr></table>';
+
+    // ══ SECTION 3: COMMON SWR FITTINGS ══
+    h += '<table class="of swr-full">';
+    h += '<tr class="sec-hdr"><td style="text-align:center;font-size:8px;font-weight:700">COMMON SWR FITTINGS</td></tr>';
+    h += '</table>';
+
+    h += '<table class="of swr-wrap"><tr>';
+
+    // ── LEFT: Traps (sizes 110x75, 110x90, 110x110, 125x110) ──
+    h += '<td class="swr-cell"><table class="of swr-inner">';
+    h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
+    ['110x75','110x90','110x110','125x110'].forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow4('NAHNI TRAP (ISI) (One Piece)', [null,null,null,null], [3], L);
+    h += swrRow4('P TRAP (LONG 45)', [null,null,null,null], [0,1], L);
+    h += swrRow4('P TRAP (LW 45\u00b0)', [null,null,null,null], [0,1], L);
+    h += swrRow4('P TRAP (Short)', [null,null,null,null], [0,1], L);
+    h += swrRow4('P TRAP (Flat)', [null,null,null,null], [0,1], L);
+    h += swrRow4('S TRAP', [null,null,null,null], [0,1,3], L);
+    h += swrRow4('Q TRAP', [null,null,null,null], [0,1,3], L);
+    h += swrRow4('RED BUSH', [null,null,null,null], [], L);
+    h += '<tr class="sec-hdr"><td class="lbl"></td>';
+    ['110x63','110x75','110x90','110x110'].forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow4('NAHNI TRAP (LW)', [null,null,null,null], [], L);
+    h += '</table></td>';
+
+    // ── RIGHT: Accessories (sizes 50, 63, 75, 90, 110, 160) ──
+    h += '<td class="swr-cell"><table class="of swr-inner swr-wide">';
+    h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
+    ['50','63','75','90','110','160'].forEach(function(s) { h += '<td class="c sz">' + s + '</td>'; });
+    h += '</tr>';
+    h += swrRow6('COWL', [null,null,null,null,null,null], [], L);
+    h += swrRow6('PIPE CLIP', [null,null,null,null,null,null], [0,1,3,5], L);
+    h += swrRow6('SOCKET PLUG', [null,null,null,null,null,null], [0,1,3,5], L);
+    h += swrRow6('BACKFLOW VALVE', [null,null,null,null,null,null], [0,1], L);
+    // Sub-section: Floor Traps
+    h += '<tr class="sec-hdr">';
+    h += '<td colspan="2" class="lbl">FITTING SIZE</td><td class="c sz">110</td>';
+    h += '<td colspan="3" class="lbl">FITTING SIZE</td><td class="c sz">110</td>';
+    h += '</tr>';
+    var floorItems = [
+      ['FLOOR TRAP', 'EXTENSION'],
+      ['FLOOR TRAP (Cap Type)', 'W C CONN.'],
+      ['FLOOR TRAP (Square Jally)', 'HEIGHT RISER'],
+      ['FLOOR TRAP(7Ht Cap Type)', 'JALI'],
+      ['GULLY TRAP (Square Jally)', '']
+    ];
+    floorItems.forEach(function(fi) {
+      h += '<tr class="data-row">';
+      h += '<td colspan="2" class="lbl">' + esc(fi[0]) + '</td>';
+      h += '<td class="c"></td>';
+      if (fi[1]) h += '<td colspan="3" class="lbl">' + esc(fi[1]) + '</td>';
+      else h += '<td colspan="3" class="c"></td>';
+      h += '<td class="c"></td>';
+      h += '</tr>';
+    });
+    h += '</table></td>';
+
+    h += '</tr></table>';
+
+    // ══ SECTION 4: SOLVENT & LUBRICANT ══
+    h += '<table class="of swr-full swr-solvent">';
+    h += '<tr class="sec-hdr"><td colspan="11" style="text-align:center;font-size:8px;font-weight:700">SOLVENT</td></tr>';
+    h += '<tr class="sec-hdr">';
+    h += '<td colspan="2" style="text-align:center;font-size:7px">CPVC</td>';
+    h += '<td colspan="3" style="text-align:center;font-size:7px">uPVC</td>';
+    h += '<td colspan="2" style="text-align:center;font-size:7px">Agri MASTAR</td>';
+    h += '<td colspan="2" style="text-align:center;font-size:7px">LUBRICANT</td>';
+    h += '<td class="c sz">BOX</td><td class="c sz">S</td>';
+    h += '</tr>';
+    h += '<tr class="sec-hdr">';
+    h += '<td colspan="2" class="c"></td>';
+    h += '<td class="c"></td><td class="c sz">HD</td><td class="c sz">MD</td>';
+    h += '<td colspan="2" class="c"></td><td colspan="2" class="c"></td>';
+    h += '<td class="c sz">B</td><td class="c"></td>';
+    h += '</tr>';
+    var solventData = [
+      ['15 ml', '20 ml', '25 ml', '50 gm', 'SFRL50'],
+      ['29 ml', '50 ml', '50 ml', '100 gm', 'SFRL100'],
+      ['59 ml (Tube)', '59 ml', '100 ml', '250 gm', 'SFRL250'],
+      ['118 ml', '118 ml', '250 ml', '500 gm', 'SFRL500'],
+      ['237 ml', '237 ml', '500 ml', '', null],
+      ['473 ml', '473 ml', '1 ltr', '', null],
+      ['946 ml', '946 ml', '5 ltr', '', null],
+      ['59 ml (Tin)', '', '', '', null]
+    ];
+    solventData.forEach(function(sr, idx) {
+      h += '<tr class="data-row">';
+      h += '<td class="lbl">' + esc(sr[0]) + '</td><td class="c"></td>';
+      h += '<td class="lbl">' + esc(sr[1]) + '</td><td class="c"></td><td class="c"></td>';
+      h += '<td class="lbl">' + esc(sr[2]) + '</td><td class="c"></td>';
+      h += '<td class="lbl">' + esc(sr[3]) + '</td>';
+      var lv = sr[4] ? cellVal(L, sr[4]) : '';
+      h += '<td class="c' + (lv ? ' filled' : '') + '">' + esc(lv) + '</td>';
+      if (idx === 1) h += '<td colspan="2" class="lbl" style="text-align:center">ITEM</td>';
+      else if (idx === 3) h += '<td colspan="2" class="lbl" style="text-align:center">TOTAL WT</td>';
+      else h += '<td class="c"></td><td class="c"></td>';
+      h += '</tr>';
+    });
+    h += '</table>';
+
+    h += '</div>';
+    return h;
+  }
+
 
   function buildPlaceholderForm(title, brandLabel) {
     var h = '<div class="form-page">';
@@ -420,10 +905,10 @@
     // Form 1: CPVC
     html += buildCPVCForm(order, cpvcItems, party);
 
-    // Forms 2-6: placeholders for now
+    // Forms 2-6
     html += buildPlaceholderForm('AGRI ORDER FORM', 'AgriMASTER');
-    html += buildPlaceholderForm('uPVC ORDER FORM', 'Surefit\u00ae');
-    html += buildPlaceholderForm('SWR ORDER FORM', 'WATERFLO');
+    html += buildUPVCForm(order, items, party);
+    html += buildSWRForm(order, items, party);
     html += buildPlaceholderForm('PIPES ORDER FORM', 'WATERFLO');
     html += buildPlaceholderForm('MISC ORDER FORM', 'WATERFLO');
 
@@ -474,6 +959,26 @@
       '.filled { background: #fff9c4; color: #d84315; font-weight: 800; font-size: 10px; }',
       '.mix-lbl { font-size: 6.5px; font-weight: 600; text-align: left; padding-left: 2px; white-space: nowrap; }',
       '.rlbl { background: #f5f5f5; }',
+
+      /* SWR form */
+      '.swr-form { font-size: 7.5px; }',
+      '.swr-full { width: 100%; border-collapse: collapse; }',
+      '.swr-full td { border: 1px solid #000; }',
+      '.swr-wrap { width: 100%; border-collapse: collapse; border: none; }',
+      '.swr-wrap > tbody > tr > td.swr-cell { width: 50%; vertical-align: top; padding: 0; border: none; }',
+      '.swr-cell > table.of { width: 100%; }',
+      '.swr-inner td { padding: 1px 2px; }',
+      '.swr-inner .lbl { font-size: 6.5px; }',
+      '.swr-inner .c { font-size: 7.5px; }',
+      '.swr-inner .sz { font-size: 6px; }',
+      '.swr-inner .rsz { font-size: 5.5px; }',
+      '.swr-inner .filled { font-size: 8px; }',
+      '.swr-sec-title { text-align: center; font-size: 7px; font-weight: 700; }',
+      '.swr-wide .lbl { font-size: 5.5px; }',
+      '.swr-wide .c { font-size: 6.5px; }',
+      '.swr-solvent td { padding: 1px 2px; }',
+      '.swr-solvent .lbl { font-size: 6.5px; }',
+      '.swr-solvent .c { font-size: 7px; }',
 
       /* Print */
       '@media print {',

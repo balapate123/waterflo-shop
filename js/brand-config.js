@@ -94,9 +94,10 @@ const BRANDS = [
       { id:'fittings', label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
     ],
     subcategoryNames: {
-      swr_type_a:'Type A (3.2mm)', swr_type_b:'Type B (2.5mm)',
+      swr_type_a:'Type A', swr_type_b:'Type B',
       bend:'Bend', tee:'Tee', coupler:'Coupler', endcap:'End Cap',
       reducer:'Reducer', wye:'Y-Branch', door:'Door',
+      cleansing_pipe:'Cleansing Pipe',
       floor_trap:'Floor Trap', nahni_trap:'Nahni Trap', p_trap:'P-Trap',
     }
   },

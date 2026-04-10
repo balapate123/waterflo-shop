@@ -37,7 +37,15 @@
       "Bash(tasklist)",
       "Bash(netstat -ano)",
       "Bash(taskkill:*)",
-      "Bash(cmd.exe:*)"
+      "Bash(cmd.exe:*)",
+      "mcp__code-review-graph__build_or_update_graph_tool",
+      "mcp__code-review-graph__list_repos_tool",
+      "Bash(ls *.xlsx)",
+      "Bash(ls *ORDER* *order* *Form* *form*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "code-review-graph"
+  ]
 }
