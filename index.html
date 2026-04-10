@@ -22,6 +22,7 @@
     </div>
     <div class="header-actions">
       <span class="user-info" id="userInfo"></span>
+      <button class="cart-btn" id="myOrdersBtn" onclick="toggleMyOrders()" title="My Orders">&#x1F4CB; Orders</button>
       <a href="/admin.html" class="cart-btn" id="adminLink" style="display:none;text-decoration:none;color:white" title="Admin Dashboard">&#x2699; Admin</a>
       <button class="cart-btn" id="logoutBtn" onclick="handleLogout()" title="Logout">&#x23FB; Logout</button>
     </div>
@@ -37,6 +38,30 @@
   <main class="brand-grid" id="brandGrid">
     <!-- Rendered by JS -->
   </main>
+
+  <!-- MY ORDERS PANEL -->
+  <div id="myOrdersPanel" style="display:none">
+    <div class="my-orders-container">
+      <div class="my-orders-header">
+        <h2>My Orders</h2>
+        <button onclick="toggleMyOrders()" class="my-orders-close">&times;</button>
+      </div>
+      <div id="myOrdersList" class="my-orders-list">
+        <p style="text-align:center;padding:32px;color:#888">Loading orders...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER DETAIL MODAL -->
+  <div id="orderDetailModal" class="order-detail-overlay" style="display:none" onclick="if(event.target===this)closeOrderDetail()">
+    <div class="order-detail-modal">
+      <div class="order-detail-header">
+        <h3 id="orderDetailTitle">Order Details</h3>
+        <button onclick="closeOrderDetail()" class="my-orders-close">&times;</button>
+      </div>
+      <div id="orderDetailBody"></div>
+    </div>
+  </div>
 
   <!-- FOOTER -->
   <footer class="landing-footer">
@@ -107,6 +132,99 @@
     async function handleLogout() {
       await fetch('/api/auth/logout', { method: 'POST' });
       window.location.href = '/login.html';
+    }
+
+    var myOrdersOpen = false;
+
+    async function toggleMyOrders() {
+      var panel = document.getElementById('myOrdersPanel');
+      myOrdersOpen = !myOrdersOpen;
+      panel.style.display = myOrdersOpen ? '' : 'none';
+      if (myOrdersOpen) loadMyOrders();
+    }
+
+    async function loadMyOrders() {
+      var list = document.getElementById('myOrdersList');
+      list.innerHTML = '<p style="text-align:center;padding:32px;color:#888">Loading orders...</p>';
+      try {
+        var res = await fetch('/api/orders');
+        if (!res.ok) throw new Error('Failed to load');
+        var data = await res.json();
+        var orders = data.orders || [];
+        if (!orders.length) {
+          list.innerHTML = '<p style="text-align:center;padding:32px;color:#888">No orders placed yet.</p>';
+          return;
+        }
+        list.innerHTML = orders.map(function(o) {
+          var date = new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+          var statusClass = 'status-' + (o.status || 'pending');
+          var net = o.net_amount != null ? o.net_amount : o.total_amount;
+          return '<div class="my-order-card" onclick="viewOrderDetail(' + o.id + ')">' +
+            '<div class="my-order-top">' +
+              '<span class="my-order-no">' + escHtml(o.order_no) + '</span>' +
+              '<span class="my-order-status ' + statusClass + '">' + escHtml(o.status || 'pending') + '</span>' +
+            '</div>' +
+            '<div class="my-order-info">' +
+              '<span>' + escHtml(o.brand_name || o.brand_short_name || o.brand_id) + '</span>' +
+              '<span>' + date + '</span>' +
+            '</div>' +
+            '<div class="my-order-bottom">' +
+              (o.discount_percent > 0 ? '<span class="my-order-discount">Disc: ' + o.discount_percent + '%</span>' : '<span></span>') +
+              '<span class="my-order-amount">&#x20B9; ' + Number(net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      } catch (e) {
+        list.innerHTML = '<p style="text-align:center;padding:32px;color:#c62828">Error loading orders. Please try again.</p>';
+      }
+    }
+
+    async function viewOrderDetail(orderId) {
+      var modal = document.getElementById('orderDetailModal');
+      var body = document.getElementById('orderDetailBody');
+      modal.style.display = '';
+      body.innerHTML = '<p style="text-align:center;padding:24px;color:#888">Loading...</p>';
+      try {
+        var res = await fetch('/api/orders/' + orderId);
+        if (!res.ok) throw new Error('Failed');
+        var data = await res.json();
+        var o = data.order;
+        var items = data.items || [];
+        document.getElementById('orderDetailTitle').textContent = o.order_no;
+        var date = new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        var net = o.net_amount != null ? o.net_amount : o.total_amount;
+        var html = '<div class="od-summary">' +
+          '<div class="od-row"><span>Brand</span><span>' + escHtml(o.brand_name || o.brand_id) + '</span></div>' +
+          '<div class="od-row"><span>Date</span><span>' + date + '</span></div>' +
+          '<div class="od-row"><span>Status</span><span class="my-order-status status-' + (o.status||'pending') + '">' + escHtml(o.status||'pending') + '</span></div>' +
+          '<div class="od-row"><span>Total</span><span>&#x20B9; ' + Number(o.total_amount).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+          (o.discount_percent > 0 ? '<div class="od-row"><span>Discount</span><span>' + o.discount_percent + '%</span></div>' : '') +
+          '<div class="od-row od-net"><span>Net Amount</span><span>&#x20B9; ' + Number(net).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+          (o.notes ? '<div class="od-row"><span>Notes</span><span>' + escHtml(o.notes) + '</span></div>' : '') +
+        '</div>';
+        html += '<table class="od-table"><thead><tr><th>Product</th><th>Size</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>';
+        items.forEach(function(it) {
+          var amt = (it.rate_per_unit || 0) * (it.qty || 0);
+          html += '<tr><td>' + escHtml(it.name) + '<br><small style="color:#888">' + escHtml(it.code) + '</small></td>' +
+            '<td>' + escHtml(it.size) + '</td>' +
+            '<td>' + it.qty + ' ' + escHtml(it.unit_label || it.unit_type || '') + '</td>' +
+            '<td>&#x20B9;' + Number(it.rate_per_unit).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
+            '<td>&#x20B9;' + Number(amt).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        body.innerHTML = html;
+      } catch (e) {
+        body.innerHTML = '<p style="text-align:center;padding:24px;color:#c62828">Error loading order details.</p>';
+      }
+    }
+
+    function closeOrderDetail() {
+      document.getElementById('orderDetailModal').style.display = 'none';
+    }
+
+    function escHtml(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     document.addEventListener('DOMContentLoaded', initLanding);
