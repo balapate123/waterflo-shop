@@ -41,7 +41,10 @@
       "mcp__code-review-graph__build_or_update_graph_tool",
       "mcp__code-review-graph__list_repos_tool",
       "Bash(ls *.xlsx)",
-      "Bash(ls *ORDER* *order* *Form* *form*)"
+      "Bash(ls *ORDER* *order* *Form* *form*)",
+      "Bash(sqlite3 server/db/waterflo.db \"SELECT oi.id, oi.code, oi.name, p.brand_id FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id LIMIT 20;\")",
+      "Bash(sqlite3 server/db/waterflo.db \"SELECT o.id, o.order_no, o.brand_id, GROUP_CONCAT\\(DISTINCT p.brand_id\\) as item_brands FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.id LEFT JOIN products p ON oi.code = p.code GROUP BY o.id ORDER BY o.id DESC LIMIT 10;\")",
+      "Bash(wmic process:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

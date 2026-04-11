@@ -473,6 +473,30 @@
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
+    function buildBrandTags(order) {
+      // Collect all unique brands: the order's own brand + any from item_brands
+      var seen = {};
+      var brands = [];
+      // Primary brand from order (handles both brand_short_name and brand_name fields)
+      var primaryName = order.brand_short_name || order.brand_name;
+      if (primaryName) {
+        seen[primaryName] = true;
+        brands.push({ short_name: primaryName, color: order.brand_color || '#607d8b' });
+      }
+      // Additional brands from order items
+      if (order.item_brands && order.item_brands.length) {
+        order.item_brands.forEach(function(b) {
+          if (!seen[b.short_name]) {
+            seen[b.short_name] = true;
+            brands.push({ short_name: b.short_name, color: b.color || '#607d8b' });
+          }
+        });
+      }
+      return brands.map(function(b) {
+        return '<span class="mini-tag" style="background:' + b.color + ';color:white">' + escapeHtml(b.short_name) + '</span>';
+      }).join(' ');
+    }
+
     // ═══ GLOBALS ═══
     var allBrands = [];
     var currentUser = null;
@@ -603,7 +627,7 @@
       } else {
         document.getElementById('recentOrdersBody').innerHTML = '<table class="admin-table compact"><thead><tr><th>Order</th><th>Dealer</th><th>Brand</th><th>Total</th><th>Status</th></tr></thead><tbody>'
           + d.recentOrders.map(function(o) {
-            return '<tr><td>' + escapeHtml(o.order_no) + '</td><td>' + escapeHtml(o.company_name || o.contact_name) + '</td><td>' + escapeHtml(o.brand_name) + '</td><td>' + fmt(calcGrandTotal(o.net_amount || o.total_amount)) + '</td><td>' + statusBadge(o.status) + '</td></tr>';
+            return '<tr><td>' + escapeHtml(o.order_no) + '</td><td>' + escapeHtml(o.company_name || o.contact_name) + '</td><td>' + buildBrandTags(o) + '</td><td>' + fmt(calcGrandTotal(o.net_amount || o.total_amount)) + '</td><td>' + statusBadge(o.status) + '</td></tr>';
           }).join('')
           + '</tbody></table>';
       }
@@ -869,7 +893,7 @@
           + '<div class="user-order-header">'
           +   '<div>'
           +     '<strong>' + escapeHtml(o.order_no) + '</strong>'
-          +     ' <span class="mini-tag" style="background:' + (o.brand_color || '#607d8b') + ';color:white">' + escapeHtml(o.brand_short_name) + '</span> '
+          +     ' ' + buildBrandTags(o) + ' '
           +     statusBadge(o.status)
           +     (oDiscPct > 0 ? ' <span style="font-size:0.75rem;color:#2e7d32;font-weight:600">Disc: ' + oDiscPct + '% (&minus;' + fmt(oDiscAmt) + ')</span>' : '')
           +   '</div>'
@@ -1089,7 +1113,7 @@
           + '<td>' + fmtDate(o.created_at) + '</td>'
           + '<td>' + escapeHtml(o.company_name || o.contact_name) + '</td>'
           + '<td>' + (o.salesman_name ? escapeHtml(o.salesman_name) : '\u2014') + '</td>'
-          + '<td><span class="mini-tag" style="background:' + (o.brand_color || '#607d8b') + ';color:white">' + escapeHtml(o.brand_short_name) + '</span></td>'
+          + '<td>' + buildBrandTags(o) + '</td>'
           + '<td>' + fmt(calcGrandTotal(o.net_amount || o.total_amount)) + '</td>'
           + '<td>' + statusBadge(o.status) + '</td>'
           + '<td class="actions-cell">'
@@ -1117,7 +1141,15 @@
       lastViewedOrder = { order: o, items: items };
 
       var discPct = o.discount_percent || o.user_discount_percent || 0;
-      var brandName = o.brand_name || '';
+      // Show all brands in the order
+      var allBrandNames = [o.brand_name];
+      if (o.item_brands && o.item_brands.length) {
+        o.item_brands.forEach(function(b) {
+          var bName = b.name || b.short_name;
+          if (allBrandNames.indexOf(bName) === -1) allBrandNames.push(bName);
+        });
+      }
+      var brandName = allBrandNames.filter(Boolean).join(', ');
       var priceDate = o.brand_price_date || '';
 
       // Build item rows
@@ -1252,7 +1284,14 @@
 
     function renderEditOrder(o) {
       var discPct = o.discount_percent || o.user_discount_percent || 0;
-      var brandName = o.brand_name || '';
+      var allBrandNames = [o.brand_name];
+      if (o.item_brands && o.item_brands.length) {
+        o.item_brands.forEach(function(b) {
+          var bName = b.name || b.short_name;
+          if (allBrandNames.indexOf(bName) === -1) allBrandNames.push(bName);
+        });
+      }
+      var brandName = allBrandNames.filter(Boolean).join(', ');
 
       var itemsTotal = 0;
       var editColCount = discPct > 0 ? 12 : 11; // +1 for delete btn column
@@ -1311,16 +1350,19 @@
         + '</tfoot>'
         + '</table>'
         + '</div>'
-        // Add item row
-        + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px;padding:10px;background:#f5f5f5;border-radius:8px">'
-        +   '<div style="flex:1;min-width:120px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Code</label><input id="addItemCode" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="Code"></div>'
-        +   '<div style="flex:2;min-width:150px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Name</label><input id="addItemName" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="Product name"></div>'
-        +   '<div style="flex:0.8;min-width:80px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Size</label><input id="addItemSize" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="Size"></div>'
-        +   '<div style="flex:0.8;min-width:80px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Unit Label</label><input id="addItemUnitLabel" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="e.g. Box of 50"></div>'
-        +   '<div style="flex:0.5;min-width:60px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Pcs/Unit</label><input id="addItemPcsPerUnit" type="number" min="1" value="1" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px"></div>'
-        +   '<div style="flex:0.5;min-width:70px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Rate</label><input id="addItemRate" type="number" step="0.01" min="0" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px" placeholder="0.00"></div>'
-        +   '<div style="flex:0.5;min-width:60px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Qty</label><input id="addItemQty" type="number" min="1" value="1" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px"></div>'
-        +   '<button onclick="addEditOrderItem()" style="background:#4caf50;color:white;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-weight:600;white-space:nowrap">+ Add</button>'
+        // Product Lookup - Add item
+        + '<div style="margin-bottom:12px;padding:12px;background:#f5f5f5;border-radius:8px">'
+        +   '<div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;color:#1565c0">&#x1F50D; Add Product to Order</div>'
+        +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:8px">'
+        +     '<div style="flex:0 0 180px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Brand</label><select id="addItemBrandFilter" onchange="productLookupSearch()" style="width:100%;padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem"><option value="">All Brands</option>' + allBrands.map(function(b) { return '<option value="' + b.id + '"' + (b.id === o.brand_id ? ' selected' : '') + '>' + escapeHtml(b.short_name) + '</option>'; }).join('') + '</select></div>'
+        +     '<div style="flex:1;min-width:200px;position:relative"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Search Product</label><input id="addItemSearch" oninput="productLookupSearch()" onkeydown="productLookupKeydown(event)" autocomplete="off" style="width:100%;padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem" placeholder="Type product name or code...">'
+        +       '<div id="productLookupResults" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:white;border:1px solid #ccc;border-top:none;border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:100"></div>'
+        +     '</div>'
+        +     '<div style="flex:0 0 120px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Unit Type</label><select id="addItemUnitType" onchange="updateProductPreview()" style="width:100%;padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem"><option value="stdpkg">Packet (Pkg)</option><option value="box">Box</option></select></div>'
+        +     '<div style="flex:0 0 70px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Qty</label><input id="addItemQty" type="number" min="1" value="1" style="width:100%;padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem"></div>'
+        +     '<button onclick="addSelectedProduct()" id="addProductBtn" disabled style="background:#9e9e9e;color:white;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-weight:600;white-space:nowrap;align-self:end">+ Add</button>'
+        +   '</div>'
+        +   '<div id="selectedProductPreview" style="display:none;padding:8px 10px;background:#e3f2fd;border-radius:6px;font-size:0.82rem;display:none"></div>'
         + '</div>'
         // Notes
         + '<div style="margin-bottom:12px"><label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px">Notes</label><textarea id="editOrderNotes" rows="2" style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem;resize:vertical">' + escapeHtml(o.notes || '') + '</textarea></div>'
@@ -1351,25 +1393,188 @@
       renderEditOrder(lastViewedOrder.order);
     }
 
-    function addEditOrderItem() {
-      var code = document.getElementById('addItemCode').value.trim();
-      var name = document.getElementById('addItemName').value.trim();
-      var size = document.getElementById('addItemSize').value.trim();
-      var unitLabel = document.getElementById('addItemUnitLabel').value.trim();
-      var pcsPerUnit = parseInt(document.getElementById('addItemPcsPerUnit').value) || 1;
-      var rate = parseFloat(document.getElementById('addItemRate').value) || 0;
-      var qty = parseInt(document.getElementById('addItemQty').value) || 1;
+    // ═══ PRODUCT LOOKUP FOR ORDER EDITING ═══
+    var productLookupCache = {};
+    var productLookupSelected = null;
+    var productLookupHighlight = -1;
+    var productLookupTimer = null;
+    var productLookupResults = [];
 
-      if (!code || !name || !size) { alert('Code, Name, and Size are required'); return; }
+    function productLookupSearch() {
+      var search = document.getElementById('addItemSearch').value.trim();
+      var brandId = document.getElementById('addItemBrandFilter').value;
+
+      // Clear selection when search changes
+      productLookupSelected = null;
+      updateProductPreview();
+
+      if (search.length < 2) {
+        document.getElementById('productLookupResults').style.display = 'none';
+        productLookupResults = [];
+        return;
+      }
+
+      clearTimeout(productLookupTimer);
+      productLookupTimer = setTimeout(function() {
+        var cacheKey = brandId + '|' + search.toLowerCase();
+        if (productLookupCache[cacheKey]) {
+          renderProductLookupResults(productLookupCache[cacheKey]);
+          return;
+        }
+
+        var params = ['search=' + encodeURIComponent(search)];
+        if (brandId) params.push('brand_id=' + brandId);
+        fetch('/api/admin/products?' + params.join('&'))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            productLookupCache[cacheKey] = data.products || [];
+            renderProductLookupResults(data.products || []);
+          });
+      }, 250);
+    }
+
+    function renderProductLookupResults(products) {
+      var container = document.getElementById('productLookupResults');
+      productLookupResults = products;
+      productLookupHighlight = -1;
+
+      if (products.length === 0) {
+        container.innerHTML = '<div style="padding:10px;color:#999;font-size:0.82rem;text-align:center">No products found</div>';
+        container.style.display = 'block';
+        return;
+      }
+
+      container.innerHTML = products.slice(0, 50).map(function(p, i) {
+        return '<div class="product-lookup-item" data-index="' + i + '" onclick="selectLookupProduct(' + i + ')" onmouseenter="productLookupHighlight=' + i + ';highlightLookupItem()" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.82rem">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center">'
+          + '<div><span style="font-family:monospace;color:#1565c0;font-weight:600;margin-right:6px">' + escapeHtml(p.code) + '</span>' + escapeHtml(p.name) + '</div>'
+          + '<span style="color:#666;font-size:0.75rem;white-space:nowrap;margin-left:8px">' + escapeHtml(p.brand_name || '') + '</span>'
+          + '</div>'
+          + '<div style="color:#888;font-size:0.75rem;margin-top:2px">Size: ' + escapeHtml(p.size) + ' &middot; Rate: ' + fmt(p.rate) + (p.std_pkg ? ' &middot; Pkg: ' + p.std_pkg : '') + '</div>'
+          + '</div>';
+      }).join('');
+      container.style.display = 'block';
+    }
+
+    function highlightLookupItem() {
+      var items = document.querySelectorAll('.product-lookup-item');
+      items.forEach(function(el, i) {
+        el.style.background = i === productLookupHighlight ? '#e3f2fd' : 'white';
+      });
+    }
+
+    function productLookupKeydown(e) {
+      if (!productLookupResults.length) return;
+      var maxIdx = Math.min(productLookupResults.length, 50) - 1;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        productLookupHighlight = Math.min(productLookupHighlight + 1, maxIdx);
+        highlightLookupItem();
+        var items = document.querySelectorAll('.product-lookup-item');
+        if (items[productLookupHighlight]) items[productLookupHighlight].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        productLookupHighlight = Math.max(productLookupHighlight - 1, 0);
+        highlightLookupItem();
+        var items = document.querySelectorAll('.product-lookup-item');
+        if (items[productLookupHighlight]) items[productLookupHighlight].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && productLookupHighlight >= 0) {
+        e.preventDefault();
+        selectLookupProduct(productLookupHighlight);
+      } else if (e.key === 'Escape') {
+        document.getElementById('productLookupResults').style.display = 'none';
+      }
+    }
+
+    function selectLookupProduct(index) {
+      var p = productLookupResults[index];
+      if (!p) return;
+      productLookupSelected = p;
+      document.getElementById('productLookupResults').style.display = 'none';
+      document.getElementById('addItemSearch').value = p.code + ' - ' + p.name;
+
+      // Update unit type dropdown based on available options
+      var sel = document.getElementById('addItemUnitType');
+      sel.innerHTML = '';
+      if (p.std_pkg && parseInt(p.std_pkg) > 0) {
+        sel.innerHTML += '<option value="stdpkg">Packet (Pkg ' + p.std_pkg + ' pcs)</option>';
+      }
+      if (p.qty_box && parseInt(p.qty_box) > 0) {
+        sel.innerHTML += '<option value="box">Box (' + parseInt(p.qty_box).toLocaleString('en-IN') + ' pcs)</option>';
+      }
+      if (!sel.innerHTML) {
+        sel.innerHTML = '<option value="stdpkg">Packet (1 pc)</option><option value="box">Box (1 pc)</option>';
+      }
+
+      updateProductPreview();
+    }
+
+    function getUnitInfoForProduct(p, unitType) {
+      var pcsPerUnit = 1;
+      var unitLabel = 'Pcs';
+      if (unitType === 'stdpkg') {
+        pcsPerUnit = (p.std_pkg && parseInt(p.std_pkg) > 0) ? parseInt(p.std_pkg) : 1;
+        unitLabel = 'Pkg \u00B7 ' + pcsPerUnit;
+      } else if (unitType === 'box') {
+        pcsPerUnit = (p.qty_box && parseInt(p.qty_box) > 0) ? parseInt(p.qty_box) : 1;
+        unitLabel = 'Box \u00B7 ' + pcsPerUnit.toLocaleString('en-IN');
+      }
+      var ratePerUnit = p.rate * pcsPerUnit;
+      return { pcsPerUnit: pcsPerUnit, unitLabel: unitLabel, ratePerUnit: ratePerUnit };
+    }
+
+    function updateProductPreview() {
+      var preview = document.getElementById('selectedProductPreview');
+      var btn = document.getElementById('addProductBtn');
+      if (!productLookupSelected) {
+        preview.style.display = 'none';
+        btn.disabled = true;
+        btn.style.background = '#9e9e9e';
+        return;
+      }
+      var p = productLookupSelected;
+      var unitType = document.getElementById('addItemUnitType').value;
+      var info = getUnitInfoForProduct(p, unitType);
+      preview.style.display = 'block';
+      preview.innerHTML = '<strong>Selected:</strong> <span style="font-family:monospace;color:#1565c0">' + escapeHtml(p.code) + '</span> &mdash; ' + escapeHtml(p.name)
+        + ' &middot; Size: ' + escapeHtml(p.size)
+        + ' &middot; Rate/pc: ' + fmt(p.rate)
+        + ' &middot; <strong>' + escapeHtml(info.unitLabel) + ' = ' + fmt(info.ratePerUnit) + '/unit</strong>'
+        + ' <a href="#" onclick="productLookupSelected=null;updateProductPreview();document.getElementById(\'addItemSearch\').value=\'\';document.getElementById(\'addItemSearch\').focus();return false" style="margin-left:8px;color:#f44336;text-decoration:none;font-weight:600">&times; Clear</a>';
+      btn.disabled = false;
+      btn.style.background = '#4caf50';
+    }
+
+    function addSelectedProduct() {
+      if (!productLookupSelected) { alert('Please search and select a product first'); return; }
+      var p = productLookupSelected;
+      var qty = parseInt(document.getElementById('addItemQty').value) || 1;
+      var unitType = document.getElementById('addItemUnitType').value;
+      var info = getUnitInfoForProduct(p, unitType);
 
       editingOrderItems.push({
-        product_id: null, code: code, name: name, size: size,
-        unit_type: 'custom', unit_label: unitLabel || 'Pcs',
-        pcs_per_unit: pcsPerUnit, rate_per_unit: rate, qty: qty
+        product_id: p.id, code: p.code, name: p.name, size: p.size,
+        unit_type: unitType, unit_label: info.unitLabel,
+        pcs_per_unit: info.pcsPerUnit, rate_per_unit: info.ratePerUnit, qty: qty
       });
+
+      // Reset lookup
+      productLookupSelected = null;
+      document.getElementById('addItemSearch').value = '';
+      document.getElementById('addItemQty').value = '1';
+      updateProductPreview();
 
       renderEditOrder(lastViewedOrder.order);
     }
+
+    // Close product lookup dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      var results = document.getElementById('productLookupResults');
+      var search = document.getElementById('addItemSearch');
+      if (results && search && !results.contains(e.target) && e.target !== search) {
+        results.style.display = 'none';
+      }
+    });
 
     function cancelEditOrder() {
       editingOrderItems = null;

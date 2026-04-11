@@ -53,6 +53,28 @@ router.get('/dashboard', (req, res) => {
     ORDER BY o.created_at DESC LIMIT 10
   `).all();
 
+  // Attach item_brands to recent orders
+  if (recentOrders.length) {
+    const orderIds = recentOrders.map(o => o.id);
+    const placeholders = orderIds.map(() => '?').join(',');
+    const itemBrands = db.prepare(`
+      SELECT oi.order_id, b.id as brand_id, b.short_name, b.color
+      FROM order_items oi
+      JOIN products p ON oi.code = p.code
+      JOIN brands b ON p.brand_id = b.id
+      WHERE oi.order_id IN (${placeholders})
+      GROUP BY oi.order_id, b.id
+    `).all(...orderIds);
+    const brandMap = {};
+    for (const ib of itemBrands) {
+      if (!brandMap[ib.order_id]) brandMap[ib.order_id] = [];
+      brandMap[ib.order_id].push({ id: ib.brand_id, short_name: ib.short_name, color: ib.color });
+    }
+    for (const o of recentOrders) {
+      o.item_brands = brandMap[o.id] || [];
+    }
+  }
+
   const brandStats = db.prepare(`
     SELECT b.id, b.short_name as name, b.color,
            COUNT(DISTINCT p.id) as product_count,
@@ -171,6 +193,29 @@ router.get('/users/:id/orders', (req, res) => {
   const getItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?');
   for (const order of orders) {
     order.items = getItems.all(order.id);
+  }
+
+  // Attach all distinct brands from order items
+  if (orders.length) {
+    const orderIds = orders.map(o => o.id);
+    const placeholders = orderIds.map(() => '?').join(',');
+    const itemBrands = db.prepare(`
+      SELECT oi.order_id, b.id as brand_id, b.short_name, b.color
+      FROM order_items oi
+      JOIN products p ON oi.code = p.code
+      JOIN brands b ON p.brand_id = b.id
+      WHERE oi.order_id IN (${placeholders})
+      GROUP BY oi.order_id, b.id
+    `).all(...orderIds);
+
+    const brandMap = {};
+    for (const ib of itemBrands) {
+      if (!brandMap[ib.order_id]) brandMap[ib.order_id] = [];
+      brandMap[ib.order_id].push({ id: ib.brand_id, short_name: ib.short_name, color: ib.color });
+    }
+    for (const o of orders) {
+      o.item_brands = brandMap[o.id] || [];
+    }
   }
 
   res.json({ user, orders });
@@ -388,6 +433,30 @@ router.get('/orders', (req, res) => {
   query += ' ORDER BY o.created_at DESC';
 
   const orders = db.prepare(query).all(...params);
+
+  // Attach all distinct brands from order items to each order
+  if (orders.length) {
+    const orderIds = orders.map(o => o.id);
+    const placeholders = orderIds.map(() => '?').join(',');
+    const itemBrands = db.prepare(`
+      SELECT oi.order_id, b.id as brand_id, b.short_name, b.color
+      FROM order_items oi
+      JOIN products p ON oi.code = p.code
+      JOIN brands b ON p.brand_id = b.id
+      WHERE oi.order_id IN (${placeholders})
+      GROUP BY oi.order_id, b.id
+    `).all(...orderIds);
+
+    const brandMap = {};
+    for (const ib of itemBrands) {
+      if (!brandMap[ib.order_id]) brandMap[ib.order_id] = [];
+      brandMap[ib.order_id].push({ id: ib.brand_id, short_name: ib.short_name, color: ib.color });
+    }
+    for (const o of orders) {
+      o.item_brands = brandMap[o.id] || [];
+    }
+  }
+
   res.json({ orders });
 });
 
@@ -409,6 +478,16 @@ router.get('/orders/:id', (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+
+  // Get all distinct brands from order items
+  const itemBrands = db.prepare(`
+    SELECT DISTINCT b.id as brand_id, b.short_name, b.name, b.color
+    FROM order_items oi
+    JOIN products p ON oi.code = p.code
+    JOIN brands b ON p.brand_id = b.id
+    WHERE oi.order_id = ?
+  `).all(order.id);
+  order.item_brands = itemBrands;
 
   res.json({ order, items });
 });

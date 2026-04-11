@@ -58,6 +58,93 @@
     return String(it.qty);
   }
 
+  // Format currency for summary sheet
+  function fmtCur(n) { return '\u20B9' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  // Build final Order Summary sheet listing all items
+  function buildOrderSummarySheet(order, items, party) {
+    var h = '<div class="form-page">';
+    h += '<table class="of">';
+
+    // Header
+    h += '<tr class="hdr"><td colspan="10" class="company-name">WATERFLO PIPING SYSTEM</td></tr>';
+    h += '<tr class="hdr"><td colspan="10" class="form-title">ORDER SUMMARY</td></tr>';
+
+    // Party info
+    h += '<tr class="info-row"><td colspan="10" class="party-field">PARTY NAME:- <span class="fill-val">' + esc(party.company_name) + '</span></td></tr>';
+    h += '<tr class="info-row">';
+    h += '<td colspan="4" class="party-field">ORDER NO:- <span class="fill-val">' + esc(order.order_no) + '</span></td>';
+    h += '<td colspan="3" class="party-field">DATE:- <span class="fill-val">' + fmtDate(order.created_at) + '</span></td>';
+    h += '<td colspan="3" class="party-field">STATE:- <span class="fill-val">' + esc(party.state || '') + '</span></td>';
+    h += '</tr>';
+
+    // Column headers
+    h += '<tr class="sec-hdr">';
+    h += '<td class="c sz" style="width:4%;text-align:center">#</td>';
+    h += '<td class="c sz" style="width:12%">Code</td>';
+    h += '<td class="c sz" style="width:28%">Product</td>';
+    h += '<td class="c sz" style="width:8%">Size</td>';
+    h += '<td class="c sz" style="width:10%">Unit</td>';
+    h += '<td class="c sz" style="width:10%;text-align:right">Rate/Unit</td>';
+    h += '<td class="c sz" style="width:6%;text-align:center">Qty</td>';
+    h += '<td class="c sz" style="width:7%;text-align:center">Total Pcs</td>';
+    h += '<td class="c sz" style="width:12%;text-align:right">Amount</td>';
+    h += '<td class="c sz" style="width:3%"></td>';
+    h += '</tr>';
+
+    var grandTotal = 0;
+    (items || []).forEach(function(it, i) {
+      var amt = (it.rate_per_unit || 0) * (it.qty || 0);
+      var totalPcs = (it.pcs_per_unit || 1) * (it.qty || 0);
+      grandTotal += amt;
+      h += '<tr class="data-row">';
+      h += '<td class="c" style="text-align:center">' + (i + 1) + '</td>';
+      h += '<td class="c" style="font-family:monospace;font-size:7.5px;text-align:left">' + esc(it.code) + '</td>';
+      h += '<td class="c" style="text-align:left;font-size:8px">' + esc(it.name) + '</td>';
+      h += '<td class="c" style="text-align:center">' + esc(it.size) + '</td>';
+      h += '<td class="c" style="font-size:7.5px">' + esc(it.unit_label || '') + '</td>';
+      h += '<td class="c" style="text-align:right">' + fmtCur(it.rate_per_unit) + '</td>';
+      h += '<td class="c filled" style="text-align:center;font-weight:700">' + fmtQty(it) + '</td>';
+      h += '<td class="c" style="text-align:center">' + totalPcs.toLocaleString('en-IN') + '</td>';
+      h += '<td class="c" style="text-align:right">' + fmtCur(amt) + '</td>';
+      h += '<td class="c"></td>';
+      h += '</tr>';
+    });
+
+    // Totals
+    var discPct = order.discount_percent || 0;
+    var discAmt = discPct > 0 ? Math.round(grandTotal * discPct / 100 * 100) / 100 : 0;
+    var netTotal = grandTotal - discAmt;
+
+    h += '<tr style="background:#e8e8e8;font-weight:700">';
+    h += '<td colspan="8" style="text-align:right;padding:4px 6px;font-size:9px">SUBTOTAL</td>';
+    h += '<td style="text-align:right;padding:4px 6px;font-size:9px">' + fmtCur(grandTotal) + '</td>';
+    h += '<td></td></tr>';
+
+    if (discPct > 0) {
+      h += '<tr style="background:#e8f5e9;font-weight:600">';
+      h += '<td colspan="8" style="text-align:right;padding:4px 6px;font-size:9px;color:#2e7d32">DISCOUNT (' + discPct + '%)</td>';
+      h += '<td style="text-align:right;padding:4px 6px;font-size:9px;color:#2e7d32">&minus;' + fmtCur(discAmt) + '</td>';
+      h += '<td></td></tr>';
+    }
+
+    h += '<tr style="background:#1a237e;color:white;font-weight:700">';
+    h += '<td colspan="8" style="text-align:right;padding:6px;font-size:10px">NET TOTAL</td>';
+    h += '<td style="text-align:right;padding:6px;font-size:10px">' + fmtCur(netTotal) + '</td>';
+    h += '<td></td></tr>';
+
+    // Signature area
+    h += '<tr><td colspan="10" style="border:none;padding:30px 10px 5px;font-size:9px">';
+    h += '<div style="display:flex;justify-content:space-between">';
+    h += '<div style="text-align:center;width:40%"><div style="border-top:1px solid #000;padding-top:4px">Authorized Signature</div></div>';
+    h += '<div style="text-align:center;width:40%"><div style="border-top:1px solid #000;padding-top:4px">Party Signature</div></div>';
+    h += '</div></td></tr>';
+
+    h += '</table>';
+    h += '</div>';
+    return h;
+  }
+
   // Render a data cell (fillable or "-")
   function dc(val, isUnavail) {
     if (isUnavail) return '<td class="c na">-</td>';
@@ -330,6 +417,7 @@
     for (var i = 0; i < 10; i++) h += '<td class="c"></td>';
     h += '</tr>';
 
+
     h += '</table>';
     h += '</div>'; // .form-page
 
@@ -563,6 +651,7 @@
     h += '<tr class="data-row"><td colspan="3" class="lbl">BOX (S) :-</td>';
     for (var i = 0; i < 10; i++) h += '<td class="c"></td>';
     h += '</tr>';
+
 
     h += '</table>';
     h += '</div>'; // .form-page
@@ -872,6 +961,8 @@
       else h += '<td class="c"></td><td class="c"></td>';
       h += '</tr>';
     });
+
+
     h += '</table>';
 
     h += '</div>';
@@ -911,6 +1002,9 @@
     html += buildSWRForm(order, items, party);
     html += buildPlaceholderForm('PIPES ORDER FORM', 'WATERFLO');
     html += buildPlaceholderForm('MISC ORDER FORM', 'WATERFLO');
+
+    // Final sheet: complete order summary with all items
+    html += buildOrderSummarySheet(order, items, party);
 
     html += '</body></html>';
 
