@@ -792,34 +792,34 @@
     h += swrRow4('DOOR RED Y', [null,'CSFDRY11075',null,null], [0,2,3], L);
     h += '</table></td>';
 
-    // ── RIGHT: Selfit SWR Fittings (no product codes yet) ──
+    // ── RIGHT: Selfit SWR Fittings ──
     h += '<td class="swr-cell"><table class="of swr-inner">';
     h += '<tr class="sec-hdr"><td colspan="5" class="swr-sec-title">WATERFLO SELFIT SWR FITTINGS</td></tr>';
     h += '<tr class="sec-hdr"><td class="lbl">FITTING SIZE</td>';
     ['75','90','110','160'].forEach(function(s) { h += '<td class="c sz">' + s + '</td>'; });
     h += '</tr>';
-    h += swrRow4('BEND 87.5\u00b0', [null,null,null,null], [], L);
-    h += swrRow4('DOOR BEND 87.5\u00b0', [null,null,null,null], [], L);
-    h += swrRow4('SINGLE TEE', [null,null,null,null], [], L);
-    h += swrRow4('DOOR TEE', [null,null,null,null], [], L);
-    h += swrRow4('BEND 45\u00b0', [null,null,null,null], [], L);
-    h += swrRow4('COUPLER', [null,null,null,null], [], L);
-    h += swrRow4('SINGLE Y', [null,null,null,null], [3], L);
-    h += swrRow4('DOOR Y', [null,null,null,null], [3], L);
-    h += swrRow4('CROSS TEE', [null,null,null,null], [3], L);
-    h += swrRow4('CLEANSING PIPE', [null,null,null,null], [1,3], L);
-    h += swrRow4('DOUBLE Y', [null,null,null,null], [1,3], L);
-    h += swrRow4('DOOR DOUBLE Y', [null,null,null,null], [1,3], L);
-    h += swrRow4('SWEPT TEE', [null,null,null,null], [0,1,3], L);
-    h += swrRow4('DOOR SWEPT TEE', [null,null,null,null], [0,1,3], L);
+    h += swrRow4('BEND 87.5\u00b0',      ['SFB75','SFB90','SFB110','SFB160'],          [], L);
+    h += swrRow4('DOOR BEND 87.5\u00b0', ['SFDB75','SFDB90','SFDB110','SFDB160'],      [], L);
+    h += swrRow4('SINGLE TEE',           ['SFST75','SFST90','SFST110','SFST160'],       [], L);
+    h += swrRow4('DOOR TEE',             ['SFSTD75','SFSTD90','SFSTD110','SFSTD160'],   [], L);
+    h += swrRow4('BEND 45\u00b0',        [null,null,null,null],                         [], L);
+    h += swrRow4('COUPLER',              ['SFC75','SFC90','SFC110','SFC160'],            [], L);
+    h += swrRow4('SINGLE Y',             ['SFY75','SFY90','SFY110',null],               [3], L);
+    h += swrRow4('DOOR Y',               ['SFYD75','SFYD90','SFYD110',null],             [3], L);
+    h += swrRow4('CROSS TEE',            ['SFCT75','SFCT90','SFCT110',null],             [3], L);
+    h += swrRow4('CLEANSING PIPE',       ['SFCP75',null,'SFCP110',null],                 [1,3], L);
+    h += swrRow4('DOUBLE Y',             ['SFDY75',null,'SFDY110',null],                 [1,3], L);
+    h += swrRow4('DOOR DOUBLE Y',        ['SFDYD75',null,'SFDYD110',null],               [1,3], L);
+    h += swrRow4('SWEPT TEE',            [null,null,'SFSPT110',null],                    [0,1,3], L);
+    h += swrRow4('DOOR SWEPT TEE',       [null,null,'SFSPTD110',null],                   [0,1,3], L);
     h += '<tr class="sec-hdr"><td class="lbl">RED. SIZE</td>';
     ['110x63','110x75','110x90','160x110'].forEach(function(s) { h += '<td class="c sz rsz">' + s + '</td>'; });
     h += '</tr>';
-    h += swrRow4('REDUCER', [null,null,null,null], [0], L);
-    h += swrRow4('REDUCING TEE', [null,null,null,null], [0,2,3], L);
-    h += swrRow4('DOOR RED TEE', [null,null,null,null], [0,2,3], L);
-    h += swrRow4('REDUCING Y', [null,null,null,null], [2,3], L);
-    h += swrRow4('DOOR RED Y', [null,null,null,null], [0,2,3], L);
+    h += swrRow4('REDUCER',       [null,'SFR1075','SFR1090','SFR16110'],       [0], L);
+    h += swrRow4('REDUCING TEE',  [null,'SFRT11075','SFRT11090',null],          [0,3], L);
+    h += swrRow4('DOOR RED TEE',  [null,'SFRTD11075','SFRTD11090',null],        [0,3], L);
+    h += swrRow4('REDUCING Y',    [null,'SFRY11075','SFRY11090',null],           [0,3], L);
+    h += swrRow4('DOOR RED Y',    [null,'SFRYD11075','SFRYD11090',null],         [0,3], L);
     h += '</table></td>';
 
     h += '</tr></table>';

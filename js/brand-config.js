@@ -119,8 +119,8 @@ const BRANDS = [
       { id:'fittings', label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
     ],
     subcategoryNames: {
-      swr_2_5kg:'2.5 Kg Pipes', lw_fittings:'Light Weight Fittings',
-      bend:'Bend', tee:'Tee', coupler:'Coupler', reducer:'Reducer',
+      swr_2_5kg:'2.5 Kg Pipes', lw_fittings:'LW Fittings', lw_selfit:'Selfit LW Fittings',
+      bend:'Bend', tee:'Tee', coupler:'Coupler', wye:'Y-Branch', reducer:'Reducer',
     }
   },
   {
@@ -142,7 +142,6 @@ const BRANDS = [
     ],
     subcategoryNames: {
       swr_type_a:'Type A Pipes', swr_type_b:'Type B Pipes',
-      selfit_pipe:'SelFit Pipes', selfit_fitting:'SelFit Fittings',
       bend:'Bend', tee:'Tee', coupler:'Coupler', wye:'Y-Branch',
       reducer:'Reducer', cleansing_pipe:'Cleansing Pipe',
       trap:'Traps', accessory:'Accessories', valve:'Valves',
