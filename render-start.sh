@@ -9,6 +9,11 @@ if [ -d "/data" ]; then
   mkdir -p /data/db
   mkdir -p /data/uploads/products
   
+  # Keep code files intact by copying them to the persistent db folder
+  # (Since we are replacing the entire directory with a symlink)
+  cp server/db/seed.js /data/db/
+  cp server/db/schema.sql /data/db/
+  
   # Link them into the app structure that the code expects
   # Remove the existing directories if they exist
   rm -rf server/db
