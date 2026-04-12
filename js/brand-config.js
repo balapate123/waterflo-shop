@@ -141,11 +141,11 @@ const BRANDS = [
       { id:'fittings', label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
     ],
     subcategoryNames: {
+      swr_type_a:'Type A Pipes', swr_type_b:'Type B Pipes',
       selfit_pipe:'SelFit Pipes', selfit_fitting:'SelFit Fittings',
-      common_swr:'Common SWR Fittings',
-      bend:'Bend', tee:'Tee', coupler:'Coupler', endcap:'End Cap',
-      reducer:'Reducer', wye:'Y-Branch', door:'Door',
-      floor_trap:'Floor Trap', nahni_trap:'Nahni Trap',
+      bend:'Bend', tee:'Tee', coupler:'Coupler', wye:'Y-Branch',
+      reducer:'Reducer', cleansing_pipe:'Cleansing Pipe',
+      trap:'Traps', accessory:'Accessories', valve:'Valves',
     }
   },
   {
