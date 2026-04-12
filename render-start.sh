@@ -1,31 +1,27 @@
 #!/usr/bin/env bash
 set -e
 
-# Render disk is mounted at /data
+# Export the database directory path to the persistent disk if it exists
 if [ -d "/data" ]; then
-  echo "Setting up persistent disk symlinks..."
+  echo "Using Render persistent disk at /data..."
   
-  # Create directories on the persistent disk if they don't exist
+  # Ensure the database directory exists on the persistent disk
   mkdir -p /data/db
+  export DB_DIR=/data/db
+  
+  # Ensure the uploads directory exists on the persistent disk
   mkdir -p /data/uploads/products
   
-  # Keep code files intact by copying them to the persistent db folder
-  # (Since we are replacing the entire directory with a symlink)
-  cp server/db/seed.js /data/db/
-  cp server/db/schema.sql /data/db/
-  
-  # Link them into the app structure that the code expects
-  # Remove the existing directories if they exist
-  rm -rf server/db
+  # Link the uploads directory (It's safe to symlink since no code runs inside uploads)
   rm -rf uploads
-  
-  ln -s /data/db server/db
   ln -s /data/uploads uploads
+else
+  export DB_DIR=server/db
 fi
 
 # Run the seed script if the database doesn't exist yet
-if [ ! -f server/db/waterflo.db ]; then
-  echo "First run detected! Seeding the database..."
+if [ ! -f "$DB_DIR/waterflo.db" ]; then
+  echo "First run detected! Seeding the database at $DB_DIR..."
   npm run seed
 fi
 

@@ -26,7 +26,8 @@ if (isProd && process.env.SESSION_SECRET && process.env.SESSION_SECRET.length < 
 
 // ─── Database setup ────────────────────────────────────────────────────────────
 
-const DB_PATH = path.join(__dirname, 'db', 'waterflo.db');
+const DB_DIR = process.env.DB_DIR || path.join(__dirname, 'db');
+const DB_PATH = path.join(DB_DIR, 'waterflo.db');
 if (!fs.existsSync(DB_PATH)) {
   console.error('Database not found. Run "npm run seed" first.');
   process.exit(1);
@@ -162,7 +163,7 @@ app.use('/api/auth/register', authLimiter);
 
 app.use(session({
   store: new SQLiteStore({
-    dir: path.join(__dirname, 'db'),
+    dir: DB_DIR,
     db: 'sessions.db'
   }),
   secret: process.env.SESSION_SECRET || 'waterflo-dev-secret-not-for-production',

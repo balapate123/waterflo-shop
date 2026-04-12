@@ -5,7 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const DB_PATH = path.join(__dirname, 'waterflo.db');
+const DB_DIR = process.env.DB_DIR || __dirname;
+const DB_PATH = path.join(DB_DIR, 'waterflo.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 
