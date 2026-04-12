@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: waterflo
+    env: node
+    plan: starter # Starter plan is required for Persistent Disks ($7/mo)
+    buildCommand: npm install
+    startCommand: bash render-start.sh
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1 # ($1/mo for 1GB disk)
