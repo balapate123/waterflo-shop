@@ -6,9 +6,55 @@
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
+.admin-header {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+  color: white;
+  padding: 0 16px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .admin-header .logo-sub {
   color: #f9a825;
   font-weight: 700;
+}
+
+.admin-header .back-btn {
+  color: white;
+  text-decoration: none;
+  font-size: 1.2rem;
+  margin-right: 8px;
+}
+
+.admin-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-header .user-info {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.admin-header .cart-btn,
+.admin-header #adminLogoutBtn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-header .cart-btn:hover,
+.admin-header #adminLogoutBtn:hover {
+  background: rgba(255,255,255,0.25);
 }
 
 /* ─── TAB NAV ────────────────────────────────────────────────────────────── */
@@ -20,7 +66,7 @@
   overflow-x: auto;
   scrollbar-width: none;
   position: sticky;
-  top: 60px;
+  top: 56px;
   z-index: 90;
 }
 .admin-tabs::-webkit-scrollbar { display: none; }

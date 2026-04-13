@@ -1198,10 +1198,18 @@ body {
 
 /* ─── SEARCH AREA ──────────────────────────────────────────────────────────── */
 .search-area {
-  background: var(--bg);
+  background: var(--primary-dark);
   padding: 24px 16px 16px;
+  max-width: 100%;
+}
+
+.search-area .search-bar-wrap {
   max-width: 600px;
   margin: 0 auto;
+}
+
+.search-bar-hint {
+  color: rgba(255,255,255,0.45);
 }
 
 .search-bar-wrap {
@@ -1255,7 +1263,6 @@ body {
   text-align: center;
   margin-top: 8px;
   font-size: 0.75rem;
-  color: var(--text-muted);
 }
 
 /* ─── DEALER SELECTOR ──────────────────────────────────────────────────────── */
