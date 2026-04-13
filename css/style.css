@@ -1493,11 +1493,13 @@ body {
   display: none;
   max-width: 500px;
   margin: 12px auto 0;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.25);
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: var(--radius);
   padding: 14px 16px;
   text-align: left;
+  color: #1a1a2e;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
 }
 .home-product-detail .hpd-header {
   display: flex;
@@ -1512,23 +1514,23 @@ body {
 .home-product-detail .hpd-code {
   font-family: monospace;
   font-size: 0.8rem;
-  opacity: 0.8;
+  color: #666;
 }
 .home-product-detail .hpd-close {
   background: none;
   border: none;
-  color: rgba(255,255,255,.7);
+  color: #999;
   font-size: 1.1rem;
   cursor: pointer;
   padding: 0 4px;
 }
-.home-product-detail .hpd-close:hover { color: white; }
+.home-product-detail .hpd-close:hover { color: #333; }
 .home-product-detail .hpd-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
   font-size: 0.82rem;
-  opacity: 0.9;
+  color: #444;
   margin-bottom: 10px;
 }
 .home-product-detail .hpd-actions {
@@ -1545,9 +1547,9 @@ body {
 .home-product-detail .hpd-qty-btn {
   width: 28px; height: 28px;
   border-radius: 6px;
-  border: 1.5px solid rgba(255,255,255,.3);
-  background: rgba(255,255,255,.1);
-  color: white;
+  border: 1.5px solid #ccc;
+  background: #f5f5f5;
+  color: #333;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
@@ -1555,15 +1557,15 @@ body {
   align-items: center;
   justify-content: center;
 }
-.home-product-detail .hpd-qty-btn:hover { background: rgba(255,255,255,.2); }
+.home-product-detail .hpd-qty-btn:hover { background: #e0e0e0; }
 .home-product-detail .hpd-qty-input {
   width: 40px;
   text-align: center;
   padding: 4px;
-  border: 1.5px solid rgba(255,255,255,.3);
+  border: 1.5px solid #ccc;
   border-radius: 6px;
-  background: rgba(255,255,255,.1);
-  color: white;
+  background: #fff;
+  color: #333;
   font-size: 0.88rem;
   font-weight: 600;
 }
@@ -1582,10 +1584,10 @@ body {
 .home-product-detail .hpd-add-btn.added { background: #2e7d32; }
 .home-product-detail .hpd-view-link {
   font-size: 0.82rem;
-  color: rgba(255,255,255,.85);
+  color: #1976d2;
   text-decoration: underline;
 }
-.home-product-detail .hpd-view-link:hover { color: white; }
+.home-product-detail .hpd-view-link:hover { color: #0d47a1; }
 
 /* ─── HOMEPAGE CART ─────────────────────────────────────────────────────────── */
 .landing-page .cart-panel .cart-item {
