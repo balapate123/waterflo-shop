@@ -24,6 +24,29 @@ const upload = multer({
   }
 });
 
+// Brand image upload config
+const brandStorage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    const dir = path.join(__dirname, '..', '..', 'uploads', 'brands');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = 'brand_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + ext;
+    cb(null, name);
+  }
+});
+const brandUpload = multer({
+  storage: brandStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
+  }
+});
+
 // All routes require admin
 router.use(requireAdmin);
 
@@ -726,12 +749,48 @@ router.post('/products/bulk-price', (req, res) => {
   res.json({ message: `Updated ${result.changes} products by ${percent_change}%` });
 });
 
-// ─── BRANDS (for admin selectors) ───────────────────────────────────────────
+// ─── BRAND MANAGEMENT ────────────────────────────────────────────────────────
 
+// Upload brand image
+router.post('/brands/upload-image', brandUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No valid image file uploaded (jpg, png, webp, max 2MB)' });
+  res.json({ image_url: '/uploads/brands/' + req.file.filename });
+});
+
+// Get all brands (admin)
 router.get('/brands', (req, res) => {
   const db = req.app.get('db');
   const brands = db.prepare('SELECT * FROM brands ORDER BY name').all();
   res.json({ brands });
+});
+
+// Update brand
+router.put('/brands/:id', (req, res) => {
+  const db = req.app.get('db');
+  const brandId = req.params.id;
+  const b = req.body;
+
+  const existing = db.prepare('SELECT id FROM brands WHERE id = ?').get(brandId);
+  if (!existing) return res.status(404).json({ error: 'Brand not found' });
+
+  const fields = ['logo_url', 'banner_url', 'tagline', 'color', 'active'];
+  const updates = [];
+  const params = [];
+
+  for (const f of fields) {
+    if (b[f] !== undefined) {
+      updates.push(`${f} = ?`);
+      params.push(b[f]);
+    }
+  }
+
+  if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+
+  params.push(brandId);
+  db.prepare(`UPDATE brands SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+  const updated = db.prepare('SELECT * FROM brands WHERE id = ?').get(brandId);
+  res.json({ brand: updated });
 });
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
