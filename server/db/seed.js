@@ -58,8 +58,8 @@ console.log(`Found ${BRANDS.length} brands`);
 
 // Insert brands
 const insertBrand = db.prepare(`
-  INSERT INTO brands (id, name, short_name, tagline, color, unit_logic, price_date)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO brands (id, name, short_name, tagline, color, unit_logic, price_date, logo_url, banner_url)
+  VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)
 `);
 
 for (const b of BRANDS) {

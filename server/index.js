@@ -37,6 +37,15 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Migrations: add logo_url and banner_url to brands if missing
+try {
+  db.prepare("SELECT logo_url FROM brands LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE brands ADD COLUMN logo_url TEXT");
+  db.exec("ALTER TABLE brands ADD COLUMN banner_url TEXT");
+  console.log('Migration: added logo_url and banner_url to brands table');
+}
+
 // Migrations: add image_url column to products if missing
 try {
   db.prepare("SELECT image_url FROM products LIMIT 1").get();
@@ -126,7 +135,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],

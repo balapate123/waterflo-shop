@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS brands (
   color TEXT,
   unit_logic TEXT,
   price_date TEXT,
+  logo_url TEXT,
+  banner_url TEXT,
   active INTEGER DEFAULT 1
 );
 
