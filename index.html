@@ -22,6 +22,10 @@
     </div>
     <div class="header-actions">
       <span class="user-info" id="userInfo"></span>
+      <button class="cart-btn" id="homeCartBtn" onclick="toggleHomeCart()" title="Cart">
+        &#x1F6D2; <span class="cart-label">Cart</span>
+        <span class="cart-badge" id="homeCartBadge" style="display:none">0</span>
+      </button>
       <button class="cart-btn" id="myOrdersBtn" onclick="toggleMyOrders()" title="My Orders">&#x1F4CB; Orders</button>
       <a href="/admin.html" class="cart-btn" id="adminLink" style="display:none;text-decoration:none;color:white" title="Admin Dashboard">&#x2699; Admin</a>
       <button class="cart-btn" id="logoutBtn" onclick="handleLogout()" title="Logout">&#x23FB; Logout</button>
@@ -32,6 +36,16 @@
   <div class="landing-hero" id="landingHero">
     <h1>Waterflo Pipes &amp; Fittings</h1>
     <p>Select a brand to browse products and place orders</p>
+    <!-- Product Lookup Search -->
+    <div class="home-search-wrap" id="homeSearchWrap">
+      <span class="home-search-icon">&#x1F50D;</span>
+      <input type="search" class="home-search-input" id="homeSearchInput" placeholder="Search products across all brands..." autocomplete="off"
+        oninput="homeProductSearch()" onkeydown="homeSearchKeydown(event)">
+      <button class="home-search-clear" id="homeSearchClear" onclick="clearHomeSearch()">&times;</button>
+      <div class="home-lookup-results" id="homeLookupResults"></div>
+    </div>
+    <!-- Selected product detail -->
+    <div class="home-product-detail" id="homeProductDetail"></div>
   </div>
 
   <!-- BRAND GRID -->
@@ -62,6 +76,39 @@
       <div id="orderDetailBody"></div>
     </div>
   </div>
+
+  <!-- CART OVERLAY -->
+  <div class="cart-overlay" id="homeCartOverlay" onclick="toggleHomeCart()"></div>
+
+  <!-- CART PANEL -->
+  <aside class="cart-panel" id="homeCartPanel">
+    <div class="cart-header">
+      <div>
+        <h2>Your Cart</h2>
+        <div class="cart-header-sub"><span id="homeCartItemCount">0 items</span></div>
+      </div>
+      <div class="cart-header-actions">
+        <button class="btn-icon" id="homeClearCartBtn" onclick="clearHomeCart()" title="Clear cart">&#x1F5D1; Clear</button>
+        <button id="homeCloseCart" onclick="toggleHomeCart()" style="background:none;border:none;color:white;font-size:1.3rem;cursor:pointer">&times;</button>
+      </div>
+    </div>
+    <div class="cart-items" id="homeCartItems">
+      <div class="cart-empty">
+        <div class="cart-empty-icon">&#x1F6D2;</div>
+        <p>Your cart is empty</p>
+        <p class="cart-empty-sub">Search for products above to add items</p>
+      </div>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-total-row">
+        <span class="cart-total-label">Total</span>
+        <span id="homeCartTotal">&#x20B9;0.00</span>
+      </div>
+      <div class="cart-footer-btns">
+        <button class="btn-quote" onclick="goToCartBrand()">&#x1F6D2; Continue Shopping</button>
+      </div>
+    </div>
+  </aside>
 
   <!-- FOOTER -->
   <footer class="landing-footer">
@@ -227,7 +274,346 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    document.addEventListener('DOMContentLoaded', initLanding);
+    // ═══ PRODUCT LOOKUP ═══
+    var homeLookupCache = {};
+    var homeLookupResults = [];
+    var homeLookupHighlight = -1;
+    var homeLookupTimer = null;
+    var homeSelectedProduct = null;
+
+    function homeProductSearch() {
+      var input = document.getElementById('homeSearchInput');
+      var q = input.value.trim();
+      var clearBtn = document.getElementById('homeSearchClear');
+      clearBtn.style.display = q.length > 0 ? 'block' : 'none';
+
+      homeSelectedProduct = null;
+      document.getElementById('homeProductDetail').style.display = 'none';
+
+      if (q.length < 2) {
+        document.getElementById('homeLookupResults').style.display = 'none';
+        homeLookupResults = [];
+        return;
+      }
+
+      clearTimeout(homeLookupTimer);
+      homeLookupTimer = setTimeout(function() {
+        var cacheKey = q.toLowerCase();
+        if (homeLookupCache[cacheKey]) {
+          renderHomeLookupResults(homeLookupCache[cacheKey]);
+          return;
+        }
+        fetch('/api/brands/search-products?q=' + encodeURIComponent(q))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            homeLookupCache[cacheKey] = data.products || [];
+            renderHomeLookupResults(data.products || []);
+          });
+      }, 250);
+    }
+
+    function renderHomeLookupResults(products) {
+      var container = document.getElementById('homeLookupResults');
+      homeLookupResults = products;
+      homeLookupHighlight = -1;
+
+      if (products.length === 0) {
+        container.innerHTML = '<div style="padding:14px;color:#999;font-size:0.85rem;text-align:center">No products found</div>';
+        container.style.display = 'block';
+        return;
+      }
+
+      container.innerHTML = products.slice(0, 50).map(function(p, i) {
+        return '<div class="home-lookup-item" data-index="' + i + '" onclick="selectHomeProduct(' + i + ')" onmouseenter="homeLookupHighlight=' + i + ';highlightHomeLookupItem()">'
+          + '<div class="hl-top">'
+          + '<div><span class="hl-code">' + escHtml(p.code) + '</span><span class="hl-name">' + escHtml(p.name) + '</span></div>'
+          + '<span class="hl-brand">' + escHtml(p.brand_name || p.brand_short_name || '') + '</span>'
+          + '</div>'
+          + '<div class="hl-details">Size: ' + escHtml(p.size) + ' &middot; Rate: &#x20B9;' + Number(p.rate).toFixed(2) + (p.std_pkg ? ' &middot; Pkg: ' + p.std_pkg : '') + '</div>'
+          + '</div>';
+      }).join('');
+      container.style.display = 'block';
+    }
+
+    function highlightHomeLookupItem() {
+      var items = document.querySelectorAll('.home-lookup-item');
+      items.forEach(function(el, i) {
+        el.classList.toggle('highlighted', i === homeLookupHighlight);
+      });
+    }
+
+    function homeSearchKeydown(e) {
+      if (!homeLookupResults.length) return;
+      var maxIdx = Math.min(homeLookupResults.length, 50) - 1;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        homeLookupHighlight = Math.min(homeLookupHighlight + 1, maxIdx);
+        highlightHomeLookupItem();
+        var items = document.querySelectorAll('.home-lookup-item');
+        if (items[homeLookupHighlight]) items[homeLookupHighlight].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        homeLookupHighlight = Math.max(homeLookupHighlight - 1, 0);
+        highlightHomeLookupItem();
+        var items = document.querySelectorAll('.home-lookup-item');
+        if (items[homeLookupHighlight]) items[homeLookupHighlight].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && homeLookupHighlight >= 0) {
+        e.preventDefault();
+        selectHomeProduct(homeLookupHighlight);
+      } else if (e.key === 'Escape') {
+        document.getElementById('homeLookupResults').style.display = 'none';
+      }
+    }
+
+    function selectHomeProduct(index) {
+      var p = homeLookupResults[index];
+      if (!p) return;
+      homeSelectedProduct = p;
+      document.getElementById('homeLookupResults').style.display = 'none';
+      document.getElementById('homeSearchInput').value = p.code + ' - ' + p.name;
+
+      // Show product detail card
+      var detail = document.getElementById('homeProductDetail');
+      var brandCfg = getBrandById(p.brand_id);
+      var brandName = brandCfg ? brandCfg.name : (p.brand_name || p.brand_id);
+      var unitLabel = '';
+      var pcsPerUnit = 1;
+      var ratePerUnit = p.rate;
+
+      // Determine unit options
+      if (p.category === 'pipes') {
+        if (p.rate_3mtr && p.qty_bundle) {
+          pcsPerUnit = p.qty_bundle;
+          ratePerUnit = p.rate_3mtr * p.qty_bundle;
+          unitLabel = 'Bundle &middot; ' + p.qty_bundle + ' (3m)';
+        } else {
+          unitLabel = '1 Pipe';
+        }
+      } else if (p.std_pkg && parseInt(p.std_pkg) > 1) {
+        pcsPerUnit = parseInt(p.std_pkg);
+        ratePerUnit = p.rate * pcsPerUnit;
+        unitLabel = 'Pkg &middot; ' + pcsPerUnit;
+      } else if (p.qty_box && parseInt(p.qty_box) > 1) {
+        pcsPerUnit = parseInt(p.qty_box);
+        ratePerUnit = p.rate * pcsPerUnit;
+        unitLabel = 'Box &middot; ' + pcsPerUnit;
+      } else {
+        unitLabel = '1 Pc';
+      }
+
+      detail.innerHTML =
+        '<div class="hpd-header">'
+        + '<div><div class="hpd-title">' + escHtml(p.name) + '</div><div class="hpd-code">' + escHtml(p.code) + '</div></div>'
+        + '<button class="hpd-close" onclick="clearHomeSearch()">&times;</button>'
+        + '</div>'
+        + '<div class="hpd-meta">'
+        + '<span>Brand: <strong>' + escHtml(brandName) + '</strong></span>'
+        + '<span>Size: <strong>' + escHtml(p.size) + '</strong></span>'
+        + '<span>Rate: <strong>&#x20B9;' + Number(p.rate).toFixed(2) + '/pc</strong></span>'
+        + (unitLabel !== '1 Pc' ? '<span>Unit: <strong>' + unitLabel + ' = &#x20B9;' + Number(ratePerUnit).toFixed(2) + '</strong></span>' : '')
+        + '</div>'
+        + '<div class="hpd-actions">'
+        + '<div class="hpd-qty-wrap">'
+        + '<button class="hpd-qty-btn" onclick="homeDetailQty(-1)">-</button>'
+        + '<input type="number" class="hpd-qty-input" id="homeDetailQtyInput" value="1" min="1">'
+        + '<button class="hpd-qty-btn" onclick="homeDetailQty(1)">+</button>'
+        + '</div>'
+        + '<button class="hpd-add-btn" id="homeAddBtn" onclick="addHomeProductToCart()"'
+        + ' data-brand="' + escHtml(p.brand_id) + '"'
+        + ' data-code="' + escHtml(p.code) + '"'
+        + ' data-name="' + escHtml(p.name) + '"'
+        + ' data-size="' + escHtml(p.size) + '"'
+        + ' data-category="' + escHtml(p.category || '') + '"'
+        + ' data-unit-type="' + (p.std_pkg > 1 ? 'stdpkg' : (p.qty_box > 1 ? 'box' : 'piece')) + '"'
+        + ' data-unit-label="' + unitLabel + '"'
+        + ' data-pcs="' + pcsPerUnit + '"'
+        + ' data-rate="' + ratePerUnit.toFixed(2) + '"'
+        + '>+ Add to Cart</button>'
+        + '<a href="brand.html?brand=' + encodeURIComponent(p.brand_id) + '" class="hpd-view-link">View in ' + escHtml(brandCfg ? brandCfg.shortName : brandName) + ' &rarr;</a>'
+        + '</div>';
+      detail.style.display = 'block';
+    }
+
+    function homeDetailQty(delta) {
+      var input = document.getElementById('homeDetailQtyInput');
+      var val = parseInt(input.value) || 1;
+      val = Math.max(1, val + delta);
+      input.value = val;
+    }
+
+    function addHomeProductToCart() {
+      var btn = document.getElementById('homeAddBtn');
+      var qty = parseInt(document.getElementById('homeDetailQtyInput').value) || 1;
+
+      var brandId = btn.dataset.brand;
+      var code = btn.dataset.code;
+      var unitType = btn.dataset.unitType;
+      var cartKey = brandId + '_' + code + '_' + unitType;
+
+      // Read existing cart
+      var homeCart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
+      var existing = homeCart.find(function(x) { return x.cartKey === cartKey; });
+
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        homeCart.push({
+          cartKey: cartKey,
+          brandId: brandId,
+          code: code,
+          name: btn.dataset.name,
+          size: btn.dataset.size,
+          category: btn.dataset.category,
+          unitType: unitType,
+          unitLabel: btn.dataset.unitLabel,
+          pcsPerUnit: parseInt(btn.dataset.pcs),
+          ratePerUnit: parseFloat(btn.dataset.rate),
+          qty: qty
+        });
+      }
+
+      localStorage.setItem('wf_cart', JSON.stringify(homeCart));
+      updateHomeCartUI();
+
+      // Feedback
+      btn.textContent = '\u2713 Added!';
+      btn.classList.add('added');
+      setTimeout(function() { btn.textContent = '+ Add to Cart'; btn.classList.remove('added'); }, 1400);
+    }
+
+    function clearHomeSearch() {
+      document.getElementById('homeSearchInput').value = '';
+      document.getElementById('homeSearchClear').style.display = 'none';
+      document.getElementById('homeLookupResults').style.display = 'none';
+      document.getElementById('homeProductDetail').style.display = 'none';
+      homeSelectedProduct = null;
+      homeLookupResults = [];
+    }
+
+    // Close lookup when clicking outside
+    document.addEventListener('click', function(e) {
+      var wrap = document.getElementById('homeSearchWrap');
+      if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('homeLookupResults').style.display = 'none';
+      }
+    });
+
+    // ═══ HOMEPAGE CART ═══
+    var homeCartOpen = false;
+
+    function toggleHomeCart() {
+      homeCartOpen = !homeCartOpen;
+      document.getElementById('homeCartPanel').classList.toggle('open', homeCartOpen);
+      document.getElementById('homeCartOverlay').classList.toggle('show', homeCartOpen);
+      if (homeCartOpen) renderHomeCartItems();
+    }
+
+    function updateHomeCartUI() {
+      var homeCart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
+      var count = homeCart.length;
+      var badge = document.getElementById('homeCartBadge');
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'flex' : 'none';
+
+      var total = homeCart.reduce(function(s, i) { return s + (i.ratePerUnit * i.qty); }, 0);
+      var totalEl = document.getElementById('homeCartTotal');
+      if (totalEl) totalEl.textContent = '\u20B9' + Number(total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      var countEl = document.getElementById('homeCartItemCount');
+      if (countEl) countEl.textContent = count + ' item' + (count !== 1 ? 's' : '');
+    }
+
+    function renderHomeCartItems() {
+      var container = document.getElementById('homeCartItems');
+      var homeCart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
+
+      if (homeCart.length === 0) {
+        container.innerHTML =
+          '<div class="cart-empty">'
+          + '<div class="cart-empty-icon">&#x1F6D2;</div>'
+          + '<p>Your cart is empty</p>'
+          + '<p class="cart-empty-sub">Search for products above to add items</p>'
+          + '</div>';
+        return;
+      }
+
+      // Group by brand
+      var groups = {};
+      homeCart.forEach(function(item) {
+        var bid = item.brandId || 'unknown';
+        if (!groups[bid]) groups[bid] = [];
+        groups[bid].push(item);
+      });
+
+      var html = '';
+      Object.keys(groups).forEach(function(bid) {
+        var brand = getBrandById(bid);
+        var brandName = brand ? brand.shortName : bid;
+        html += '<div class="ci-brand-group">'
+          + '<span>' + escHtml(brandName) + '</span>'
+          + '<a href="brand.html?brand=' + encodeURIComponent(bid) + '" class="ci-brand-link">Shop ' + escHtml(brandName) + ' &rarr;</a>'
+          + '</div>';
+
+        groups[bid].forEach(function(item) {
+          var lineTotal = item.ratePerUnit * item.qty;
+          html += '<div class="cart-item">'
+            + '<div class="ci-row">'
+            + '<div class="ci-info">'
+            + '<div class="ci-name">' + escHtml(item.name) + '</div>'
+            + '<div class="ci-meta">' + escHtml(item.code) + ' &middot; ' + escHtml(item.size) + ' &middot; ' + escHtml(item.unitLabel) + '</div>'
+            + '</div>'
+            + '<div class="ci-price">&#x20B9;' + Number(lineTotal).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</div>'
+            + '</div>'
+            + '<div class="ci-qty-row">'
+            + '<button class="ci-qty-btn" onclick="homeCartQty(\'' + item.cartKey + '\', -1)">-</button>'
+            + '<span class="ci-qty-val">' + item.qty + '</span>'
+            + '<button class="ci-qty-btn" onclick="homeCartQty(\'' + item.cartKey + '\', 1)">+</button>'
+            + '<button class="ci-remove" onclick="homeCartRemove(\'' + item.cartKey + '\')">Remove</button>'
+            + '</div>'
+            + '</div>';
+        });
+      });
+
+      container.innerHTML = html;
+    }
+
+    function homeCartQty(cartKey, delta) {
+      var homeCart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
+      var item = homeCart.find(function(x) { return x.cartKey === cartKey; });
+      if (!item) return;
+      item.qty += delta;
+      if (item.qty <= 0) homeCart = homeCart.filter(function(x) { return x.cartKey !== cartKey; });
+      localStorage.setItem('wf_cart', JSON.stringify(homeCart));
+      updateHomeCartUI();
+      renderHomeCartItems();
+    }
+
+    function homeCartRemove(cartKey) {
+      var homeCart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
+      homeCart = homeCart.filter(function(x) { return x.cartKey !== cartKey; });
+      localStorage.setItem('wf_cart', JSON.stringify(homeCart));
+      updateHomeCartUI();
+      renderHomeCartItems();
+    }
+
+    function clearHomeCart() {
+      if (!confirm('Clear all items from cart?')) return;
+      localStorage.removeItem('wf_cart');
+      updateHomeCartUI();
+      renderHomeCartItems();
+    }
+
+    function goToCartBrand() {
+      var homeCart = JSON.parse(localStorage.getItem('wf_cart') || '[]');
+      if (homeCart.length > 0) {
+        window.location.href = 'brand.html?brand=' + encodeURIComponent(homeCart[0].brandId);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      initLanding();
+      updateHomeCartUI();
+    });
   </script>
 </body>
 </html>

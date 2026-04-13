@@ -16,6 +16,27 @@ router.get('/', requireAuth, (req, res) => {
   res.json({ brands });
 });
 
+// GET /api/brands/search-products — cross-brand product search
+router.get('/search-products', requireAuth, (req, res) => {
+  const db = req.app.get('db');
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json({ products: [] });
+
+  const s = `%${q}%`;
+  const products = db.prepare(`
+    SELECT p.*, b.name AS brand_name, b.short_name AS brand_short_name
+    FROM products p
+    INNER JOIN brands b ON p.brand_id = b.id
+    INNER JOIN user_brands ub ON p.brand_id = ub.brand_id
+    WHERE ub.user_id = ? AND p.active = 1
+      AND (p.name LIKE ? OR p.code LIKE ? OR p.size LIKE ?)
+    ORDER BY p.brand_id, p.category, p.subcategory, p.size_mm, p.code
+    LIMIT 50
+  `).all(req.user.id, s, s, s);
+
+  res.json({ products });
+});
+
 // GET /api/brands/:id/products — get products for a brand
 router.get('/:id/products', requireAuth, (req, res) => {
   const db = req.app.get('db');

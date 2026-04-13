@@ -87,7 +87,7 @@ const insertMany = db.transaction((brandId, products) => {
       p.standard || null,
       p.rate || 0,
       p.unit || 'pcs',
-      p.std_pkg || 0,
+      p.ib || p.std_pkg || 0,
       p.qty_box || 0,
       p.qty_bundle || 0,
       p.rate_3mtr || null,
