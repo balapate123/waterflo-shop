@@ -143,25 +143,25 @@ var PRODUCTS = [
   // ═══════════════════════════════════════════════════════════════════════
   // CLEANSING PIPES — as per IS 13592
   // ═══════════════════════════════════════════════════════════════════════
-  { code:'CSFCP75', name:'Cleansing Pipe', category:'fittings', subcategory:'cleansing_pipe', size:'75mm(2½")', size_mm:75, standard:'IS 13592', std_pkg:29, rate:116, unit:'pcs' },
-  { code:'CSFCP110', name:'Cleansing Pipe', category:'fittings', subcategory:'cleansing_pipe', size:'110mm(4")', size_mm:110, standard:'IS 13592', std_pkg:16, rate:225, unit:'pcs' },
+  { code:'CSFCP75', name:'Cleansing Pipe', category:'accessories', subcategory:'cleansing_pipe', size:'75mm(2½")', size_mm:75, standard:'IS 13592', std_pkg:29, rate:116, unit:'pcs' },
+  { code:'CSFCP110', name:'Cleansing Pipe', category:'accessories', subcategory:'cleansing_pipe', size:'110mm(4")', size_mm:110, standard:'IS 13592', std_pkg:16, rate:225, unit:'pcs' },
 
 
   // ═══════════════════════════════════════════════════════════════════════
   // REDUCERS — as per IS 13592
   // ═══════════════════════════════════════════════════════════════════════
-  { code:'CSFR11075', name:'Reducer', category:'fittings', subcategory:'reducer', size:'110x75mm', size_mm:110, standard:'IS 13592', std_pkg:36, rate:101, unit:'pcs', info:'110x75mm' },
-  { code:'CSFR11090', name:'Reducer', category:'fittings', subcategory:'reducer', size:'110x90mm', size_mm:110, standard:'IS 13592', std_pkg:35, rate:116, unit:'pcs', info:'110x90mm' },
-  { code:'CSFR160110', name:'Reducer', category:'fittings', subcategory:'reducer', size:'160x110mm', size_mm:160, standard:'IS 13592', std_pkg:18, rate:225.5, unit:'pcs', info:'160x110mm' },
+  { code:'CSFR11075', name:'Reducer', category:'reducers', subcategory:'reducer', size:'110x75mm', size_mm:110, standard:'IS 13592', std_pkg:36, rate:101, unit:'pcs', info:'110x75mm' },
+  { code:'CSFR11090', name:'Reducer', category:'reducers', subcategory:'reducer', size:'110x90mm', size_mm:110, standard:'IS 13592', std_pkg:35, rate:116, unit:'pcs', info:'110x90mm' },
+  { code:'CSFR160110', name:'Reducer', category:'reducers', subcategory:'reducer', size:'160x110mm', size_mm:160, standard:'IS 13592', std_pkg:18, rate:225.5, unit:'pcs', info:'160x110mm' },
 
 
   // ═══════════════════════════════════════════════════════════════════════
   // CLICK RINGS (HSN Code: 4016)
   // ═══════════════════════════════════════════════════════════════════════
-  { code:'CR75', name:'Click Ring', category:'fittings', subcategory:'oring', size:'75mm(2½")', size_mm:75, standard:'IS 13592', std_pkg:25, rate:10, unit:'pcs' },
-  { code:'CR90', name:'Click Ring', category:'fittings', subcategory:'oring', size:'90mm(3")', size_mm:90, standard:'IS 13592', std_pkg:25, rate:12, unit:'pcs' },
-  { code:'CR110', name:'Click Ring', category:'fittings', subcategory:'oring', size:'110mm(4")', size_mm:110, standard:'IS 13592', std_pkg:25, rate:14, unit:'pcs' },
-  { code:'CR160', name:'Click Ring', category:'fittings', subcategory:'oring', size:'160mm(6")', size_mm:160, standard:'IS 13592', std_pkg:15, rate:34, unit:'pcs' },
+  { code:'CR75', name:'Click Ring', category:'accessories', subcategory:'oring', size:'75mm(2½")', size_mm:75, standard:'IS 13592', std_pkg:25, rate:10, unit:'pcs' },
+  { code:'CR90', name:'Click Ring', category:'accessories', subcategory:'oring', size:'90mm(3")', size_mm:90, standard:'IS 13592', std_pkg:25, rate:12, unit:'pcs' },
+  { code:'CR110', name:'Click Ring', category:'accessories', subcategory:'oring', size:'110mm(4")', size_mm:110, standard:'IS 13592', std_pkg:25, rate:14, unit:'pcs' },
+  { code:'CR160', name:'Click Ring', category:'accessories', subcategory:'oring', size:'160mm(6")', size_mm:160, standard:'IS 13592', std_pkg:15, rate:34, unit:'pcs' },
 
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -188,10 +188,10 @@ var PRODUCTS = [
   // ═══════════════════════════════════════════════════════════════════════
   // RUBBER LUBRICANT (HSN Code: 3403)
   // ═══════════════════════════════════════════════════════════════════════
-  { code:'SFRL50', name:'Rubber Lubricant', category:'fittings', subcategory:'lubricant', size:'50 grm', size_mm:0, standard:'IS 13592', std_pkg:200, rate:23, unit:'pcs' },
-  { code:'SFRL100', name:'Rubber Lubricant', category:'fittings', subcategory:'lubricant', size:'100 grm', size_mm:0, standard:'IS 13592', std_pkg:100, rate:35, unit:'pcs' },
-  { code:'SFRL250', name:'Rubber Lubricant', category:'fittings', subcategory:'lubricant', size:'250 grm', size_mm:0, standard:'IS 13592', std_pkg:40, rate:69, unit:'pcs' },
-  { code:'SFRL500', name:'Rubber Lubricant', category:'fittings', subcategory:'lubricant', size:'500 grm', size_mm:0, standard:'IS 13592', std_pkg:20, rate:108, unit:'pcs' },
+  { code:'SFRL50', name:'Rubber Lubricant', category:'accessories', subcategory:'lubricant', size:'50 grm', size_mm:0, standard:'IS 13592', std_pkg:200, rate:23, unit:'pcs' },
+  { code:'SFRL100', name:'Rubber Lubricant', category:'accessories', subcategory:'lubricant', size:'100 grm', size_mm:0, standard:'IS 13592', std_pkg:100, rate:35, unit:'pcs' },
+  { code:'SFRL250', name:'Rubber Lubricant', category:'accessories', subcategory:'lubricant', size:'250 grm', size_mm:0, standard:'IS 13592', std_pkg:40, rate:69, unit:'pcs' },
+  { code:'SFRL500', name:'Rubber Lubricant', category:'accessories', subcategory:'lubricant', size:'500 grm', size_mm:0, standard:'IS 13592', std_pkg:20, rate:108, unit:'pcs' },
 
 ];
 

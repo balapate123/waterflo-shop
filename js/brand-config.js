@@ -89,15 +89,17 @@ const BRANDS = [
     priceDate: '01/11/2025',
     unitLogic: 'swr',
     categories: [
-      { id:'all',      label:'All Products', icon:'\uD83D\uDCE6', color:'#455a64' },
-      { id:'pipes',    label:'Pipes',        icon:'\uD83D\uDD35', color:'#1565c0' },
-      { id:'fittings', label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'all',         label:'All Products', icon:'\uD83D\uDCE6', color:'#455a64' },
+      { id:'pipes',       label:'Pipes',        icon:'\uD83D\uDD35', color:'#1565c0' },
+      { id:'fittings',    label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'reducers',    label:'Reducers',     icon:'\uD83D\uDD00', color:'#e65100' },
+      { id:'accessories', label:'Accessories',  icon:'\uD83E\uDDF4', color:'#4e342e' },
     ],
     subcategoryNames: {
       swr_type_a:'Type A', swr_type_b:'Type B',
       bend:'Bend', tee:'Tee', coupler:'Coupler', endcap:'End Cap',
       reducer:'Reducer', wye:'Y-Branch', door:'Door',
-      cleansing_pipe:'Cleansing Pipe',
+      cleansing_pipe:'Cleansing Pipe', oring:'Click Ring', lubricant:'Rubber Lubricant',
       floor_trap:'Floor Trap', nahni_trap:'Nahni Trap', p_trap:'P-Trap',
     }
   },
@@ -114,9 +116,11 @@ const BRANDS = [
     priceDate: '01/11/2025',
     unitLogic: 'swr',
     categories: [
-      { id:'all',      label:'All Products', icon:'\uD83D\uDCE6', color:'#455a64' },
-      { id:'pipes',    label:'Pipes',        icon:'\uD83D\uDD35', color:'#1565c0' },
-      { id:'fittings', label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'all',         label:'All Products', icon:'\uD83D\uDCE6', color:'#455a64' },
+      { id:'pipes',       label:'Pipes',        icon:'\uD83D\uDD35', color:'#1565c0' },
+      { id:'fittings',    label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'reducers',    label:'Reducers',     icon:'\uD83D\uDD00', color:'#e65100' },
+      { id:'accessories', label:'Accessories',  icon:'\uD83E\uDDF4', color:'#4e342e' },
     ],
     subcategoryNames: {
       swr_2_5kg:'2.5 Kg Pipes', lw_fittings:'LW Fittings', lw_selfit:'Selfit LW Fittings',
@@ -136,9 +140,11 @@ const BRANDS = [
     priceDate: '01/11/2025',
     unitLogic: 'swr',
     categories: [
-      { id:'all',      label:'All Products', icon:'\uD83D\uDCE6', color:'#455a64' },
-      { id:'pipes',    label:'Pipes',        icon:'\uD83D\uDD35', color:'#1565c0' },
-      { id:'fittings', label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'all',         label:'All Products', icon:'\uD83D\uDCE6', color:'#455a64' },
+      { id:'pipes',       label:'Pipes',        icon:'\uD83D\uDD35', color:'#1565c0' },
+      { id:'fittings',    label:'Fittings',     icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'reducers',    label:'Reducers',     icon:'\uD83D\uDD00', color:'#e65100' },
+      { id:'accessories', label:'Accessories',  icon:'\uD83E\uDDF4', color:'#4e342e' },
     ],
     subcategoryNames: {
       swr_type_a:'Type A Pipes', swr_type_b:'Type B Pipes',
@@ -183,6 +189,10 @@ const BRANDS = [
       { id:'all',         label:'All Products',       icon:'\uD83D\uDCE6', color:'#455a64' },
       { id:'pipes',       label:'Pipes',              icon:'\uD83D\uDD35', color:'#1565c0' },
       { id:'fittings',    label:'Fittings',           icon:'\u2699\uFE0F', color:'#2e7d32' },
+      { id:'reducers',    label:'Reducers',           icon:'\uD83D\uDD00', color:'#e65100' },
+      { id:'brass',       label:'Brass',              icon:'\uD83E\uDD49', color:'#f9a825' },
+      { id:'valves',      label:'Valves',             icon:'\uD83D\uDEBF', color:'#6a1b9a' },
+      { id:'accessories', label:'Accessories',        icon:'\uD83E\uDDF4', color:'#4e342e' },
       { id:'fabricated',  label:'Fabricated Fittings', icon:'\uD83D\uDD29', color:'#e65100' },
     ],
     subcategoryNames: {

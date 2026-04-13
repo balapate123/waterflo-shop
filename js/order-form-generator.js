@@ -53,8 +53,9 @@
     return '';
   }
 
+  var _suppressIB = false;
   function fmtQty(it) {
-    if (it.unit_type === 'stdpkg') return it.qty + ' IB';
+    if (it.unit_type === 'stdpkg' && !_suppressIB) return it.qty + ' IB';
     return String(it.qty);
   }
 
@@ -752,6 +753,7 @@
   }
 
   function buildSWRForm(order, items, party) {
+    _suppressIB = true;
     var L = buildItemLookup(items);
     var h = '<div class="form-page swr-form">';
 
@@ -981,6 +983,7 @@
     h += '</table>';
 
     h += '</div>';
+    _suppressIB = false;
     return h;
   }
 
