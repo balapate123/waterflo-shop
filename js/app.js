@@ -1204,6 +1204,34 @@ function init() {
   var filterSearchIcon = document.getElementById('filterSearchIcon');
   if (filterSearchIcon) filterSearchIcon.innerHTML = wfIcon('search', 'sm');
 
+  // Replace remaining emoji entities with SVG icons
+  var clearSearchBtn = document.getElementById('clearSearch');
+  if (clearSearchBtn) clearSearchBtn.innerHTML = wfIcon('x', 'sm');
+  var btnGridView = document.getElementById('btnGridView');
+  if (btnGridView) btnGridView.innerHTML = wfIcon('grid-view', 'sm') + ' Grid';
+  var btnListView = document.getElementById('btnListView');
+  if (btnListView) btnListView.innerHTML = wfIcon('list', 'sm') + ' List';
+  var clearCartBtn = document.getElementById('clearCartBtn');
+  if (clearCartBtn) clearCartBtn.innerHTML = wfIcon('trash', 'sm') + ' Clear';
+  var closeCartBtn = document.getElementById('closeCart');
+  if (closeCartBtn) closeCartBtn.innerHTML = wfIcon('x', 'sm');
+  var btnQuote = document.getElementById('btnQuote');
+  if (btnQuote) btnQuote.innerHTML = wfIcon('file-text', 'sm') + ' Get Quote';
+  var btnOrder = document.getElementById('btnOrder');
+  if (btnOrder) btnOrder.innerHTML = wfIcon('cart', 'sm') + ' Place Order';
+  var btnPrint = document.getElementById('btnPrint');
+  if (btnPrint) btnPrint.innerHTML = wfIcon('printer', 'sm') + ' Print / Save PDF';
+  var closeQuoteBtn = document.getElementById('closeQuote');
+  if (closeQuoteBtn) closeQuoteBtn.innerHTML = wfIcon('x', 'sm');
+  var closeOrderBtn = document.getElementById('closeOrder');
+  if (closeOrderBtn) closeOrderBtn.innerHTML = wfIcon('x', 'sm');
+  // Quote modal heading
+  var quoteModalH2 = document.querySelector('#quoteModal .modal-header h2');
+  if (quoteModalH2) quoteModalH2.innerHTML = wfIcon('file-text', 'sm') + ' Quotation';
+  // Order modal heading
+  var orderModalH2 = document.querySelector('#orderModal .modal-header h2');
+  if (orderModalH2) orderModalH2.innerHTML = wfIcon('cart', 'sm') + ' Place Order';
+
   // Fetch user data (discount, name, category discounts) — non-blocking
   fetch('/api/auth/me').then(function(res) {
     if (res.ok) return res.json();

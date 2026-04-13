@@ -22,7 +22,7 @@
     </div>
     <div class="header-actions">
       <span class="user-info" id="adminName" style="display:inline-block"></span>
-      <button class="cart-btn" onclick="handleLogout()" title="Logout">&#x23FB; Logout</button>
+      <button class="cart-btn" id="adminLogoutBtn" onclick="handleLogout()" title="Logout">Logout</button>
     </div>
   </header>
 
@@ -215,9 +215,9 @@
       <div class="modal-header">
         <h2 id="orderDetailTitle">Order Details</h2>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-sm btn-edit" id="editOrderBtn" onclick="startEditOrder()" style="background:#1565c0">&#x270F; Edit</button>
-          <button class="btn-sm btn-edit" onclick="printOrderDetail()" style="background:#00695c">&#x1F5A8; Print</button>
-          <button class="btn-sm btn-edit" onclick="printOrderForm()" style="background:#e65100">&#x1F4CB; Order Form</button>
+          <button class="btn-sm btn-edit" id="editOrderBtn" onclick="startEditOrder()" style="background:#1565c0"><span class="btn-svg-icon" id="adminEditIcon"></span> Edit</button>
+          <button class="btn-sm btn-edit" onclick="printOrderDetail()" style="background:#00695c"><span class="btn-svg-icon" id="adminPrintIcon"></span> Print</button>
+          <button class="btn-sm btn-edit" onclick="printOrderForm()" style="background:#e65100"><span class="btn-svg-icon" id="adminFormIcon"></span> Order Form</button>
           <button onclick="closeModal('orderDetailModal')" style="background:none;border:none;color:white;font-size:1.4rem;cursor:pointer">&times;</button>
         </div>
       </div>
@@ -446,7 +446,7 @@
 
           <!-- ── Salesman note ── -->
           <div id="eu_salesman_note" style="display:none;margin-top:16px;padding:12px;background:#e8f4fd;border-radius:8px;border:1px solid #b3d4f5">
-            <p style="margin:0;font-size:0.88rem;color:#0d47a1">&#x1F464; <strong>Salesman accounts</strong> place orders on behalf of dealers. Use the <strong>Dealers</strong> button on the user list to assign dealers to this salesman.</p>
+            <p style="margin:0;font-size:0.88rem;color:#0d47a1"><span id="adminSalesmanIcon"></span> <strong>Salesman accounts</strong> place orders on behalf of dealers. Use the <strong>Dealers</strong> button on the user list to assign dealers to this salesman.</p>
           </div>
 
           <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:16px">Save Changes</button>
@@ -987,7 +987,7 @@
           +   '<div>'
           +     '<span style="margin-right:8px">' + fmtDate(o.created_at) + '</span>'
           +     '<strong>' + fmt(calcGrandTotal(o.net_amount || o.total_amount)) + '</strong>'
-          +     ' <button class="btn-sm btn-edit" onclick="downloadInvoice(' + o.id + ')" style="margin-left:8px">&#x1F4E5; Invoice</button>'
+          +     ' <button class="btn-sm btn-edit" onclick="downloadInvoice(' + o.id + ')" style="margin-left:8px">' + wfIcon('download', 'sm') + ' Invoice</button>'
           +   '</div>'
           + '</div>'
           + '<table class="admin-table compact"><thead><tr><th>Code</th><th>Product</th><th>Size</th><th>Unit</th><th>Rate</th><th>Qty</th><th>Amount</th>'
@@ -1446,7 +1446,7 @@
         + '</div>'
         // Product Lookup - Add item
         + '<div style="margin-bottom:12px;padding:12px;background:#f5f5f5;border-radius:8px">'
-        +   '<div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;color:#1565c0">&#x1F50D; Add Product to Order</div>'
+        +   '<div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;color:#1565c0">' + wfIcon('search', 'sm') + ' Add Product to Order</div>'
         +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:8px">'
         +     '<div style="flex:0 0 180px"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Brand</label><select id="addItemBrandFilter" onchange="productLookupSearch()" style="width:100%;padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem"><option value="">All Brands</option>' + allBrands.map(function(b) { return '<option value="' + b.id + '"' + (b.id === o.brand_id ? ' selected' : '') + '>' + escapeHtml(b.short_name) + '</option>'; }).join('') + '</select></div>'
         +     '<div style="flex:1;min-width:200px;position:relative"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:2px">Search Product</label><input id="addItemSearch" oninput="productLookupSearch()" onkeydown="productLookupKeydown(event)" autocomplete="off" style="width:100%;padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem" placeholder="Type product name or code...">'
@@ -2126,6 +2126,19 @@
 
     // ═══ INIT ═══
     async function init() {
+      // Populate SVG icons for static HTML elements
+      var el;
+      el = document.getElementById('adminLogoutBtn');
+      if (el) el.innerHTML = wfIcon('log-out', 'sm') + ' Logout';
+      el = document.getElementById('adminEditIcon');
+      if (el) el.innerHTML = wfIcon('edit', 'sm');
+      el = document.getElementById('adminPrintIcon');
+      if (el) el.innerHTML = wfIcon('printer', 'sm');
+      el = document.getElementById('adminFormIcon');
+      if (el) el.innerHTML = wfIcon('clipboard', 'sm');
+      el = document.getElementById('adminSalesmanIcon');
+      if (el) el.innerHTML = wfIcon('user', 'sm');
+
       await checkAdmin();
       // Fetch tax settings before anything else so all views can use them
       try {
