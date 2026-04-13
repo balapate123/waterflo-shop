@@ -1279,20 +1279,27 @@ function init() {
   renderProducts();
   updateCartUI();
 
-  // Fetch product images from API and merge into PRODUCTS
+  // Fetch product data from API and merge into PRODUCTS (prices, packaging, images)
   var brandId = activeBrand ? activeBrand.id : '';
   if (brandId) {
     fetch('/api/brands/' + brandId + '/products')
       .then(function(res) { return res.ok ? res.json() : null; })
       .then(function(data) {
         if (!data || !data.products) return;
-        var imageMap = {};
+        var apiMap = {};
         data.products.forEach(function(p) {
-          if (p.image_url) imageMap[p.code] = p.image_url;
+          apiMap[p.code] = p;
         });
-        if (Object.keys(imageMap).length === 0) return;
+        if (Object.keys(apiMap).length === 0) return;
         PRODUCTS.forEach(function(p) {
-          if (imageMap[p.code]) p.image_url = imageMap[p.code];
+          var api = apiMap[p.code];
+          if (!api) return;
+          if (api.image_url) p.image_url = api.image_url;
+          if (api.rate != null) p.rate = api.rate;
+          if (api.rate_3mtr != null) p.rate_3mtr = api.rate_3mtr;
+          if (api.rate_5mtr != null) p.rate_5mtr = api.rate_5mtr;
+          if (api.std_pkg != null) p.std_pkg = api.std_pkg;
+          if (api.qty_box != null) p.qty_box = api.qty_box;
         });
         renderProducts();
       })
