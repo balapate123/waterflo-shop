@@ -584,14 +584,12 @@ function getAvailableSubcats() {
 
 function getCategoryIcon(code) {
   var p = PRODUCTS.find(function(x) { return x.code === code; });
-  if (!p) return '\uD83D\uDCE6';
-  var cat = CATEGORIES.find(function(c) { return c.id === p.category; });
-  return (cat || {}).icon || '\uD83D\uDCE6';
+  if (!p) return wfCategoryIcon('all', 'sm');
+  return wfCategoryIcon(p.category, 'sm');
 }
 
 function getProductIcon(p) {
-  var icons = { pipes:'\uD83D\uDCCF', fittings:'\u2699\uFE0F', reducers:'\uD83D\uDD00', brass:'\uD83D\uDD29', valves:'\uD83D\uDEBF', mixer:'\uD83D\uDD27', accessories:'\uD83E\uDDF4', fabricated:'\uD83D\uDD29' };
-  return icons[p.category] || '\uD83D\uDCE6';
+  return wfCategoryIcon(p.category, 'lg');
 }
 
 function renderGridCard(p) {
@@ -741,7 +739,7 @@ function renderCategoryTabs() {
     return '<button class="cat-tab ' + (activeCategory === c.id ? 'active' : '') + '"'
       + ' onclick="setCategory(\'' + c.id + '\')"'
       + ' style="' + (activeCategory === c.id ? 'background:' + c.color + ';border-color:' + c.color + ';color:white' : '') + '">'
-      + c.icon + ' ' + c.label
+      + c.label
       + '</button>';
   }).join('');
 }
@@ -1194,6 +1192,17 @@ function init() {
 
   // Apply brand theme
   applyBrandTheme();
+
+  // Populate header icons
+  var backBtn = document.querySelector('.back-btn');
+  if (backBtn) backBtn.innerHTML = wfIcon('arrow-left', 'sm');
+  var cartBtn = document.getElementById('cartBtn');
+  if (cartBtn) cartBtn.innerHTML = wfIcon('cart', 'sm') + ' <span class="cart-label">Cart</span><span class="cart-badge" id="cartBadge" style="display:none">0</span>';
+  var logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.innerHTML = wfIcon('log-out', 'sm');
+
+  var filterSearchIcon = document.getElementById('filterSearchIcon');
+  if (filterSearchIcon) filterSearchIcon.innerHTML = wfIcon('search', 'sm');
 
   // Fetch user data (discount, name, category discounts) — non-blocking
   fetch('/api/auth/me').then(function(res) {
