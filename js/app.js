@@ -424,9 +424,9 @@ function updateQty(cartKey, delta) {
 function showAddedFeedback(code) {
   var btn = document.querySelector('[data-code="' + code + '"] .add-btn');
   if (!btn) return;
-  btn.textContent = '\u2713 Added!';
+  btn.innerHTML = wfIcon('check', 'sm') + ' Added!';
   btn.classList.add('added');
-  setTimeout(function() { btn.textContent = '+ Add to Cart'; btn.classList.remove('added'); }, 1400);
+  setTimeout(function() { btn.innerHTML = wfIcon('plus', 'sm') + ' Add to Cart'; btn.classList.remove('added'); }, 1400);
 }
 
 function updateCartUI() {
@@ -473,7 +473,7 @@ function renderCartItems() {
   if (cart.length === 0) {
     container.innerHTML =
       '<div class="cart-empty">'
-      + '<div class="cart-empty-icon">\uD83D\uDED2</div>'
+      + '<div class="cart-empty-icon">' + wfIcon('cart', 'lg') + '</div>'
       + '<p>Your cart is empty</p>'
       + '<p class="cart-empty-sub">Select a product, choose unit size, then add to cart</p>'
       + '</div>';
@@ -528,7 +528,7 @@ function renderCartItems() {
         +   buildCartPicker(item)
         +   '<div class="ci-footer">'
         +     '<span class="ci-pcs">' + pcsStr + '</span>'
-        +     '<button class="cart-remove" onclick="removeFromCart(\'' + item.cartKey + '\')">\uD83D\uDDD1\uFE0F</button>'
+        +     '<button class="cart-remove" onclick="removeFromCart(\'' + item.cartKey + '\')">' + wfIcon('trash', 'sm') + '</button>'
         +   '</div>'
         + '</div>'
         + '</div>';
@@ -615,7 +615,7 @@ function renderGridCard(p) {
 
   var imageContent = p.image_url
     ? '<img src="' + escapeHtml(p.image_url) + '" alt="' + escapeHtml(p.name) + '" class="product-img">'
-    : '<span class="product-emoji">' + getProductIcon(p) + '</span>';
+    : '<span class="product-icon">' + wfCategoryIcon(p.category, 'lg') + '</span>';
 
   return '<div class="product-card' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="product-image cat-' + p.category + '">'
@@ -642,7 +642,7 @@ function renderGridCard(p) {
       +     '<input type="number" class="card-qty-input" value="1" min="1" max="999">'
       +     '<button class="qi-btn" onclick="cardQtyDelta(\'' + p.code + '\',1)">+</button>'
       + '</div>'
-      +   '<button class="add-btn" onclick="addToCart(\'' + p.code + '\')">+ Add to Cart</button>'
+      +   '<button class="add-btn" onclick="addToCart(\'' + p.code + '\')">' + wfIcon('plus', 'sm') + ' Add to Cart</button>'
       + '</div>'
       : '')
     + '</div>';
@@ -664,7 +664,7 @@ function renderListCard(p) {
 
   var listImageContent = p.image_url
     ? '<img src="' + escapeHtml(p.image_url) + '" alt="' + escapeHtml(p.name) + '" class="pli-img">'
-    : '<span class="pli-emoji">' + getProductIcon(p) + '</span>';
+    : '<span class="pli-icon">' + wfCategoryIcon(p.category) + '</span>';
 
   return '<div class="pli' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="pli-thumb cat-' + p.category + '">'
@@ -1133,9 +1133,9 @@ function renderDealerPickerStore() {
   var header = document.querySelector('.header');
   if (!header) return;
   var currentDealer = localStorage.getItem('wf_salesman_dealer');
-  var html = '<div style="background:#f9a825;color:#1a237e;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;font-weight:600">';
-  html += '<span>👤 Salesman Mode</span>';
-  html += '<select id="storeDealerSelect" style="padding:4px;border-radius:4px;border:none;max-width:200px" onchange="changeStoreDealer(this.value)">';
+  var html = '<div class="salesman-bar">';
+  html += '<span>' + wfIcon('users', 'sm') + ' Salesman Mode</span>';
+  html += '<select id="storeDealerSelect" class="dealer-select" style="max-width:200px" onchange="changeStoreDealer(this.value)">';
   if (!currentDealer) html += '<option value="">-- Select Dealer --</option>';
   linkedDealers.forEach(function(d) {
     html += '<option value="' + d.id + '"' + (currentDealer == d.id ? ' selected' : '') + '>' + escapeHtml(d.company_name) + '</option>';
