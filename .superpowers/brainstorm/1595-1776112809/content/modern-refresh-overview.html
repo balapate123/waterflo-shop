@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waterflo Modern Refresh</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; overflow-x: hidden; }
+
+  .page-title { text-align: center; padding: 40px 20px 10px; }
+  .page-title h1 { font-size: 1.8rem; font-weight: 800; color: #f8fafc; }
+  .page-title p { color: #94a3b8; margin-top: 6px; font-size: 0.95rem; }
+
+  .comparison { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+  .comp-section { margin-bottom: 50px; }
+  .comp-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: #f97316; margin-bottom: 16px;
+  }
+  .comp-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; color: #f8fafc; }
+  .comp-desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px; line-height: 1.6; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .split { grid-template-columns: 1fr; } }
+
+  .split-pane { border-radius: 12px; overflow: hidden; }
+  .pane-label {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 8px 14px; text-align: center;
+  }
+  .pane-old .pane-label { background: #dc2626; color: white; }
+  .pane-new .pane-label { background: #16a34a; color: white; }
+  .pane-body { padding: 0; }
+
+  /* ═══ MOCK: OLD HEADER ═══ */
+  .old-header {
+    background: linear-gradient(135deg, #0d1557 0%, #1a237e 60%, #3949ab 100%);
+    padding: 0 12px; height: 48px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .old-header .logo { color: white; font-weight: 800; font-size: 14px; }
+  .old-header .logo span { color: #f9a825; }
+  .old-header .btns { display: flex; gap: 4px; }
+  .old-header .btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: white; border-radius: 50px; padding: 4px 10px; font-size: 10px; cursor: default;
+  }
+
+  /* ═══ MOCK: NEW HEADER ═══ */
+  .new-header-top {
+    background: #0f172a;
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #1e293b;
+  }
+  .new-logo-area { display: flex; align-items: center; gap: 10px; }
+  .new-logo-mark {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(135deg, #1a237e, #3949ab);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: 11px;
+  }
+  .new-logo-text { color: #f8fafc; font-weight: 700; font-size: 14px; }
+  .new-logo-text span { color: #f9a825; }
+  .new-logo-sub { color: #64748b; font-size: 9px; font-weight: 500; letter-spacing: 0.5px; }
+  .new-user-area { display: flex; align-items: center; gap: 10px; }
+  .new-avatar {
+    width: 30px; height: 30px; border-radius: 50%; background: #1e293b;
+    display: flex; align-items: center; justify-content: center;
+    color: #94a3b8; font-size: 10px; font-weight: 700; border: 1.5px solid #334155;
+  }
+  .new-user-name { color: #cbd5e1; font-size: 11px; font-weight: 600; }
+  .new-user-role { color: #64748b; font-size: 9px; }
+
+  .new-header-nav {
+    background: #0f172a; padding: 0 16px; display: flex; align-items: center;
+    gap: 2px; border-bottom: 1px solid #1e293b;
+  }
+  .nav-item {
+    padding: 10px 14px; font-size: 11px; font-weight: 600; color: #64748b;
+    display: flex; align-items: center; gap: 5px; cursor: default;
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .nav-item.active { color: #f8fafc; border-bottom-color: #f9a825; }
+  .nav-item svg { width: 14px; height: 14px; }
+  .nav-badge {
+    background: #dc2626; color: white; border-radius: 50%; width: 16px; height: 16px;
+    font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ═══ MOCK: OLD SEARCH ═══ */
+  .old-hero {
+    background: linear-gradient(135deg, #0d1557, #1a237e, #3949ab);
+    padding: 20px 16px; text-align: center; color: white;
+  }
+  .old-hero h2 { font-size: 14px; font-weight: 700; }
+  .old-hero p { font-size: 10px; opacity: 0.8; margin-top: 3px; }
+  .old-search {
+    margin: 10px auto 0; max-width: 280px; position: relative;
+  }
+  .old-search input {
+    width: 100%; padding: 8px 10px 8px 28px; border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50px; background: rgba(255,255,255,0.15); color: white; font-size: 11px;
+    outline: none;
+  }
+  .old-search input::placeholder { color: rgba(255,255,255,0.5); }
+  .old-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; }
+
+  /* ═══ MOCK: NEW SEARCH ═══ */
+  .new-search-area {
+    background: #f8fafc; padding: 24px 20px;
+  }
+  .new-search-bar {
+    max-width: 480px; margin: 0 auto; position: relative;
+  }
+  .new-search-bar input {
+    width: 100%; padding: 12px 16px 12px 42px; border: 2px solid #e2e8f0;
+    border-radius: 12px; background: white; color: #1e293b; font-size: 13px;
+    font-family: inherit; outline: none; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .new-search-bar input:focus { border-color: #1a237e; box-shadow: 0 0 0 3px rgba(26,35,126,0.1); }
+  .new-search-bar input::placeholder { color: #94a3b8; }
+  .new-search-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: #94a3b8;
+  }
+  .new-search-icon svg { width: 16px; height: 16px; }
+  .new-search-hint {
+    text-align: center; margin-top: 8px; font-size: 10px; color: #94a3b8;
+  }
+  .new-search-hint kbd {
+    background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 9px;
+    font-family: inherit; border: 1px solid #cbd5e1;
+  }
+
+  /* ═══ MOCK: OLD DEALER SELECT ═══ */
+  .old-dealer-wrap {
+    background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2); margin: 10px auto; max-width: 260px;
+  }
+  .old-dealer-wrap p { font-size: 10px; font-weight: 600; color: white; margin-bottom: 6px; }
+  .old-dealer-select {
+    width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;
+    font-size: 11px; background: white; color: #333;
+  }
+
+  /* ═══ MOCK: NEW DEALER SELECT ═══ */
+  .new-dealer-area {
+    background: #f8fafc; padding: 16px 20px;
+  }
+  .new-dealer-card {
+    max-width: 400px; margin: 0 auto; background: white; border-radius: 12px;
+    border: 1.5px solid #e2e8f0; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .new-dealer-header {
+    padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .new-dealer-header svg { width: 16px; height: 16px; color: #475569; }
+  .new-dealer-header span { font-size: 12px; font-weight: 700; color: #334155; }
+  .new-dealer-body { padding: 14px 16px; }
+  .new-dealer-label { font-size: 10px; font-weight: 600; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .new-dealer-input {
+    width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 12px; color: #1e293b; background: #f8fafc; outline: none;
+    font-family: inherit; display: flex; align-items: center; justify-content: space-between;
+  }
+  .new-dealer-input span { color: #94a3b8; font-size: 11px; }
+  .new-dealer-selected {
+    margin-top: 10px; padding: 10px 12px; background: #eff6ff; border-radius: 8px;
+    border: 1px solid #bfdbfe; display: flex; align-items: center; gap: 10px;
+  }
+  .new-dealer-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #1a237e;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 10px; font-weight: 700;
+  }
+  .new-dealer-info { flex: 1; }
+  .new-dealer-name { font-size: 12px; font-weight: 700; color: #1e293b; }
+  .new-dealer-meta { font-size: 9px; color: #64748b; margin-top: 1px; }
+  .new-dealer-change { font-size: 10px; color: #2563eb; font-weight: 600; cursor: pointer; }
+
+  /* ═══ MOCK: OLD BRAND ASSIGN ═══ */
+  .old-brand-assign {
+    background: white; padding: 12px; border-radius: 6px;
+  }
+  .old-brand-assign h4 { font-size: 11px; font-weight: 700; color: #1a237e; margin-bottom: 8px; }
+  .old-checkbox { display: flex; align-items: center; gap: 5px; font-size: 10px; padding: 3px 0; color: #333; }
+  .old-checkbox input { cursor: pointer; }
+
+  /* ═══ MOCK: NEW BRAND ASSIGN ═══ */
+  .new-brand-assign {
+    background: white; padding: 14px 16px; border-radius: 10px;
+  }
+  .new-brand-assign h4 { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 10px; }
+  .brand-chip-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .brand-chip {
+    display: flex; align-items: center; gap: 5px; padding: 5px 10px 5px 5px;
+    border-radius: 8px; border: 1.5px solid #e2e8f0; background: #f8fafc;
+    font-size: 10px; font-weight: 600; color: #64748b; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .brand-chip.active {
+    border-color: #1a237e; background: #eff6ff; color: #1a237e;
+  }
+  .brand-chip-dot {
+    width: 20px; height: 20px; border-radius: 5px; display: flex;
+    align-items: center; justify-content: center; color: white; font-size: 7px; font-weight: 700;
+  }
+  .brand-chip-check {
+    width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #cbd5e1;
+    display: flex; align-items: center; justify-content: center; margin-left: auto;
+  }
+  .brand-chip.active .brand-chip-check {
+    background: #1a237e; border-color: #1a237e;
+  }
+
+  /* ═══ MOCK: OLD PRODUCT CARD ═══ */
+  .old-product-card {
+    background: white; border-radius: 10px; width: 140px; overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .old-product-img {
+    height: 60px; background: linear-gradient(135deg, #1565c0, #1e88e5);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+  }
+  .old-product-body { padding: 6px 8px; }
+  .old-product-type { font-size: 7px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+  .old-product-name { font-size: 10px; font-weight: 700; color: #1a1a2e; margin-top: 1px; }
+  .old-product-price { font-size: 9px; color: #1a237e; font-weight: 700; margin-top: 3px; }
+  .old-product-btn {
+    width: 100%; background: #1a237e; color: white; border: none; padding: 6px;
+    font-size: 9px; font-weight: 700; cursor: default; margin-top: 4px; border-radius: 4px;
+  }
+
+  /* ═══ MOCK: NEW PRODUCT CARD ═══ */
+  .new-product-card {
+    background: white; border-radius: 12px; width: 160px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f1f5f9;
+  }
+  .new-product-img {
+    height: 70px; background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .new-product-img svg { color: #94a3b8; }
+  .new-cat-badge {
+    position: absolute; top: 6px; left: 6px; background: #1565c0; color: white;
+    font-size: 7px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .new-product-body { padding: 10px 12px; }
+  .new-product-name { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.3; }
+  .new-product-code { font-size: 9px; color: #94a3b8; font-family: 'SF Mono', monospace; margin-top: 2px; }
+  .new-product-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .new-product-size {
+    font-size: 10px; font-weight: 600; background: #f1f5f9; color: #475569;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .new-product-price { font-size: 12px; font-weight: 800; color: #1e293b; }
+  .new-product-btn {
+    width: 100%; background: #1a237e; color: white; border: none; padding: 8px;
+    font-size: 11px; font-weight: 700; cursor: default; margin-top: 8px; border-radius: 8px;
+    font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+
+  .divider { height: 1px; background: #1e293b; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Waterflo — Modern Refresh</h1>
+  <p>Side-by-side: Current vs. Redesigned. Scroll to see all areas.</p>
+</div>
+
+<div class="comparison">
+
+  <!-- ═══ 1. HEADER ═══ -->
+  <div class="comp-section">
+    <div class="comp-label">01 — Header & Navigation</div>
+    <div class="comp-title">Two-tier header with proper icons</div>
+    <div class="comp-desc">Replaces emoji buttons with SVG icons, adds user avatar, separates branding from navigation.</div>
+    <div class="split">
+      <div class="split-pane pane-old">
+        <div class="pane-label">CURRENT</div>
+        <div class="pane-body">
+          <div class="old-header">
+            <div class="logo">Water<span>flo</span>®</div>
+            <div class="btns">
+              <div class="btn">🛒 Cart</div>
+              <div class="btn">📋 Orders</div>
+              <div class="btn">⏻</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="split-pane pane-new">
+        <div class="pane-label">REDESIGNED</div>
+        <div class="pane-body">
+          <div class="new-header-top">
+            <div class="new-logo-area">
+              <div class="new-logo-mark">W</div>
+              <div>
+                <div class="new-logo-text">Water<span>flo</span>®</div>
+                <div class="new-logo-sub">Distributor Order Portal</div>
+              </div>
+            </div>
+            <div class="new-user-area">
+              <div>
+                <div class="new-user-name">Bharat Traders</div>
+                <div class="new-user-role" style="text-align:right">Dealer</div>
+              </div>
+              <div class="new-avatar">BT</div>
+            </div>
+          </div>
+          <div class="new-header-nav">
+            <div class="nav-item active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+              Brands
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+              Cart
+              <div class="nav-badge">3</div>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              My Orders
+            </div>
+            <div class="nav-item" style="margin-left:auto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Logout
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 2. SEARCH ═══ -->
+  <div class="comp-section">
+    <div class="comp-label">02 — Product Search</div>
+    <div class="comp-title">Clean search with proper input styling</div>
+    <div class="comp-desc">No more translucent input on gradient. Clear, accessible, with keyboard hint and focus ring.</div>
+    <div class="split">
+      <div class="split-pane pane-old">
+        <div class="pane-label">CURRENT</div>
+        <div class="pane-body">
+          <div class="old-hero">
+            <h2>Waterflo Pipes & Fittings</h2>
+            <p>Select a brand to browse products and place orders</p>
+            <div class="old-search">
+              <span class="old-search-icon">🔍</span>
+              <input placeholder="Search products across all brands..." readonly>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="split-pane pane-new">
+        <div class="pane-label">REDESIGNED</div>
+        <div class="pane-body">
+          <div class="new-search-area">
+            <div class="new-search-bar">
+              <div class="new-search-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              <input placeholder="Search products across all brands..." readonly style="font-family: 'Plus Jakarta Sans', sans-serif">
+            </div>
+            <div class="new-search-hint">Search by name, code, or size &middot; <kbd>Ctrl+K</kbd> to focus</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 3. DEALER SELECTOR ═══ -->
+  <div class="comp-section">
+    <div class="comp-label">03 — Salesman → Dealer Selection</div>
+    <div class="comp-title">Professional dealer selector with context</div>
+    <div class="comp-desc">Instead of a raw dropdown on the hero, a proper card with avatar, dealer info, and clear "change" action.</div>
+    <div class="split">
+      <div class="split-pane pane-old">
+        <div class="pane-label">CURRENT</div>
+        <div class="pane-body">
+          <div class="old-hero">
+            <h2>Waterflo Pipes & Fittings</h2>
+            <div class="old-dealer-wrap">
+              <p>👤 Placing order on behalf of:</p>
+              <select class="old-dealer-select">
+                <option>-- Select Dealer --</option>
+                <option>Shree Krishna Enterprises</option>
+                <option>Bharat Traders Pvt Ltd</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="split-pane pane-new">
+        <div class="pane-label">REDESIGNED</div>
+        <div class="pane-body">
+          <div class="new-dealer-area">
+            <div class="new-dealer-card">
+              <div class="new-dealer-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                <span>Placing Order On Behalf Of</span>
+              </div>
+              <div class="new-dealer-body">
+                <div class="new-dealer-selected">
+                  <div class="new-dealer-avatar">BT</div>
+                  <div class="new-dealer-info">
+                    <div class="new-dealer-name">Bharat Traders Pvt Ltd</div>
+                    <div class="new-dealer-meta">Ahmedabad, Gujarat &middot; 12% discount</div>
+                  </div>
+                  <div class="new-dealer-change">Change</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 4. BRAND ACCESS (Admin) ═══ -->
+  <div class="comp-section">
+    <div class="comp-label">04 — Admin: User Brand Access</div>
+    <div class="comp-title">Visual brand chips instead of checkboxes</div>
+    <div class="comp-desc">Instead of a plain checkbox list, color-coded brand chips with logos that are easy to scan and toggle.</div>
+    <div class="split">
+      <div class="split-pane pane-old">
+        <div class="pane-label">CURRENT</div>
+        <div class="pane-body">
+          <div class="old-brand-assign">
+            <h4>Brand Access</h4>
+            <div class="old-checkbox"><input type="checkbox" checked> StrongFit CPVC</div>
+            <div class="old-checkbox"><input type="checkbox" checked> SureFit uPVC</div>
+            <div class="old-checkbox"><input type="checkbox"> ClickFit SWR</div>
+            <div class="old-checkbox"><input type="checkbox"> uPVC SWR</div>
+            <div class="old-checkbox"><input type="checkbox" checked> AgriMaster</div>
+            <div class="old-checkbox"><input type="checkbox"> SelFit</div>
+            <div class="old-checkbox"><input type="checkbox"> Boreline</div>
+            <div class="old-checkbox"><input type="checkbox"> Solvents</div>
+          </div>
+        </div>
+      </div>
+      <div class="split-pane pane-new">
+        <div class="pane-label">REDESIGNED</div>
+        <div class="pane-body">
+          <div class="new-brand-assign">
+            <h4>Brand Access</h4>
+            <div class="brand-chip-grid">
+              <div class="brand-chip active">
+                <div class="brand-chip-dot" style="background:#c62828">SF</div>
+                StrongFit
+                <div class="brand-chip-check"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2"><polyline points="2,6 5,9 10,3"/></svg></div>
+              </div>
+              <div class="brand-chip active">
+                <div class="brand-chip-dot" style="background:#1565c0">SF</div>
+                SureFit
+                <div class="brand-chip-check"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2"><polyline points="2,6 5,9 10,3"/></svg></div>
+              </div>
+              <div class="brand-chip">
+                <div class="brand-chip-dot" style="background:#2e7d32">CF</div>
+                ClickFit
+                <div class="brand-chip-check"></div>
+              </div>
+              <div class="brand-chip">
+                <div class="brand-chip-dot" style="background:#00695c">US</div>
+                uPVC SWR
+                <div class="brand-chip-check"></div>
+              </div>
+              <div class="brand-chip active">
+                <div class="brand-chip-dot" style="background:#e65100">AM</div>
+                AgriMaster
+                <div class="brand-chip-check"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2"><polyline points="2,6 5,9 10,3"/></svg></div>
+              </div>
+              <div class="brand-chip">
+                <div class="brand-chip-dot" style="background:#6a1b9a">SL</div>
+                SelFit
+                <div class="brand-chip-check"></div>
+              </div>
+              <div class="brand-chip">
+                <div class="brand-chip-dot" style="background:#0277bd">BL</div>
+                Boreline
+                <div class="brand-chip-check"></div>
+              </div>
+              <div class="brand-chip">
+                <div class="brand-chip-dot" style="background:#4e342e">SV</div>
+                Solvents
+                <div class="brand-chip-check"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 5. PRODUCT CARDS ═══ -->
+  <div class="comp-section">
+    <div class="comp-label">05 — Product Cards</div>
+    <div class="comp-title">Cleaner typography, proper spacing, no emoji</div>
+    <div class="comp-desc">Better visual hierarchy with category badge, proper font sizing, and more breathing room.</div>
+    <div class="split">
+      <div class="split-pane pane-old">
+        <div class="pane-label">CURRENT</div>
+        <div class="pane-body" style="background:#f0f2f5;padding:16px;display:flex;justify-content:center">
+          <div class="old-product-card">
+            <div class="old-product-img">⚙️</div>
+            <div class="old-product-body">
+              <div class="old-product-type">FITTINGS · ELBOW</div>
+              <div class="old-product-name">CPVC Elbow 90°</div>
+              <div style="display:flex;gap:3px;margin-top:3px;align-items:center">
+                <span style="font-size:8px;background:#1a237e;color:white;padding:1px 4px;border-radius:10px">1/2"</span>
+                <span style="font-size:7px;color:#999;font-family:monospace">WFS-E1001</span>
+              </div>
+              <div class="old-product-price">₹12.50/pc</div>
+              <div class="old-product-btn">+ Add to Cart</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="split-pane pane-new">
+        <div class="pane-label">REDESIGNED</div>
+        <div class="pane-body" style="background:#f8fafc;padding:16px;display:flex;justify-content:center">
+          <div class="new-product-card">
+            <div class="new-product-img">
+              <div class="new-cat-badge">Fittings</div>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <div class="new-product-body">
+              <div class="new-product-name">CPVC Elbow 90°</div>
+              <div class="new-product-code">WFS-E1001</div>
+              <div class="new-product-row">
+                <div class="new-product-size">1/2"</div>
+                <div class="new-product-price">₹12.50</div>
+              </div>
+              <div class="new-product-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add to Cart
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center;padding:30px 20px 50px;color:#64748b;font-size:0.85rem">
+  <p>This shows the design language — every screen gets this treatment.</p>
+  <p style="margin-top:4px">Respond in the terminal with your thoughts.</p>
+</div>
+
+</body>
+</html>

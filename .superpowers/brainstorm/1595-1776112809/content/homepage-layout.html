@@ -1,0 +1,149 @@
+<h2>Homepage Layout — Brand Grid</h2>
+<p class="subtitle">This is the first screen dealers see after login. Which layout best presents your 8 brands?</p>
+
+<div class="cards">
+  <!-- Option A: Logo-centric cards -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#f8fafc">
+      <!-- Mockup of logo-centric brand grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:360px;margin:0 auto">
+        <div style="background:white;border-radius:10px;padding:16px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid #c62828">
+          <div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg,#c62828,#e53935);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:14px">LOGO</div>
+          <div style="font-weight:700;font-size:12px;color:#1e293b">StrongFit CPVC</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px">Always Ahead In Quality</div>
+          <div style="font-size:8px;color:#94a3b8;margin-top:4px">w.e.f. 01/03/2023</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:16px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid #1565c0">
+          <div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg,#0d47a1,#1e88e5);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:14px">LOGO</div>
+          <div style="font-weight:700;font-size:12px;color:#1e293b">SureFit uPVC</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px">uPVC Plumbing</div>
+          <div style="font-size:8px;color:#94a3b8;margin-top:4px">w.e.f. 01/11/2025</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:16px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid #2e7d32">
+          <div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg,#2e7d32,#43a047);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:14px">LOGO</div>
+          <div style="font-weight:700;font-size:12px;color:#1e293b">ClickFit SWR</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px">SWR Drainage</div>
+          <div style="font-size:8px;color:#94a3b8;margin-top:4px">w.e.f. 01/11/2025</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:16px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid #e65100">
+          <div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg,#e65100,#ff7043);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:14px">LOGO</div>
+          <div style="font-weight:700;font-size:12px;color:#1e293b">AgriMaster</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px">Agricultural Pipes</div>
+          <div style="font-size:8px;color:#94a3b8;margin-top:4px">w.e.f. 01/11/2025</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A) Logo-Centric Cards</h3>
+      <p>Centered logo with brand name below. Clean, symmetrical. Brand color as left border accent. Compact — fits 4 per row on desktop.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Banner-style cards -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#f8fafc">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:360px;margin:0 auto">
+        <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+          <div style="height:48px;background:linear-gradient(135deg,#b71c1c,#e53935);display:flex;align-items:center;padding:0 12px;gap:8px">
+            <div style="width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px">LOGO</div>
+            <div style="color:white;font-weight:700;font-size:11px">StrongFit CPVC</div>
+          </div>
+          <div style="padding:10px 12px">
+            <div style="font-size:9px;color:#64748b">Always Ahead In Quality</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <span style="font-size:8px;color:#94a3b8">w.e.f. 01/03/2023</span>
+              <span style="color:#c62828;font-weight:700;font-size:12px">&rarr;</span>
+            </div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+          <div style="height:48px;background:linear-gradient(135deg,#0d47a1,#1e88e5);display:flex;align-items:center;padding:0 12px;gap:8px">
+            <div style="width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px">LOGO</div>
+            <div style="color:white;font-weight:700;font-size:11px">SureFit uPVC</div>
+          </div>
+          <div style="padding:10px 12px">
+            <div style="font-size:9px;color:#64748b">uPVC Plumbing</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <span style="font-size:8px;color:#94a3b8">w.e.f. 01/11/2025</span>
+              <span style="color:#1565c0;font-weight:700;font-size:12px">&rarr;</span>
+            </div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+          <div style="height:48px;background:linear-gradient(135deg,#2e7d32,#43a047);display:flex;align-items:center;padding:0 12px;gap:8px">
+            <div style="width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px">LOGO</div>
+            <div style="color:white;font-weight:700;font-size:11px">ClickFit SWR</div>
+          </div>
+          <div style="padding:10px 12px">
+            <div style="font-size:9px;color:#64748b">SWR Drainage</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <span style="font-size:8px;color:#94a3b8">w.e.f. 01/11/2025</span>
+              <span style="color:#2e7d32;font-weight:700;font-size:12px">&rarr;</span>
+            </div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+          <div style="height:48px;background:linear-gradient(135deg,#e65100,#ff7043);display:flex;align-items:center;padding:0 12px;gap:8px">
+            <div style="width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px">LOGO</div>
+            <div style="color:white;font-weight:700;font-size:11px">AgriMaster</div>
+          </div>
+          <div style="padding:10px 12px">
+            <div style="font-size:9px;color:#64748b">Agricultural Pipes</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <span style="font-size:8px;color:#94a3b8">w.e.f. 01/11/2025</span>
+              <span style="color:#e65100;font-weight:700;font-size:12px">&rarr;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B) Banner-Style Cards</h3>
+      <p>Brand gradient banner at top with logo + name inline. White body below for tagline and metadata. More visual impact — each brand's color dominates.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Full-bleed hero cards -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#f8fafc">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:360px;margin:0 auto">
+        <div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);background:linear-gradient(160deg,#b71c1c 0%,#c62828 50%,#e53935 100%);padding:16px;display:flex;flex-direction:column;min-height:100px">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px;margin-bottom:auto">LOGO</div>
+          <div>
+            <div style="color:white;font-weight:700;font-size:12px">StrongFit CPVC</div>
+            <div style="color:rgba(255,255,255,0.75);font-size:9px;margin-top:2px">Always Ahead In Quality</div>
+          </div>
+        </div>
+        <div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);background:linear-gradient(160deg,#0d47a1 0%,#1565c0 50%,#1e88e5 100%);padding:16px;display:flex;flex-direction:column;min-height:100px">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px;margin-bottom:auto">LOGO</div>
+          <div>
+            <div style="color:white;font-weight:700;font-size:12px">SureFit uPVC</div>
+            <div style="color:rgba(255,255,255,0.75);font-size:9px;margin-top:2px">uPVC Plumbing</div>
+          </div>
+        </div>
+        <div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);background:linear-gradient(160deg,#2e7d32 0%,#388e3c 50%,#43a047 100%);padding:16px;display:flex;flex-direction:column;min-height:100px">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px;margin-bottom:auto">LOGO</div>
+          <div>
+            <div style="color:white;font-weight:700;font-size:12px">ClickFit SWR</div>
+            <div style="color:rgba(255,255,255,0.75);font-size:9px;margin-top:2px">SWR Drainage</div>
+          </div>
+        </div>
+        <div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);background:linear-gradient(160deg,#e65100 0%,#ef6c00 50%,#ff7043 100%);padding:16px;display:flex;flex-direction:column;min-height:100px">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:10px;margin-bottom:auto">LOGO</div>
+          <div>
+            <div style="color:white;font-weight:700;font-size:12px">AgriMaster</div>
+            <div style="color:rgba(255,255,255,0.75);font-size:9px;margin-top:2px">Agricultural Pipes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C) Full-Bleed Color Cards</h3>
+      <p>Each card IS the brand color — logo top-left, name bottom-left. Bold, immersive, each brand owns its space. Most visually striking but harder to scan quickly.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;padding:14px;background:rgba(255,255,255,0.05);border-radius:8px;border:1px solid rgba(255,255,255,0.1)">
+  <p style="font-size:0.85em;opacity:0.7"><strong>Note:</strong> "LOGO" placeholders will be replaced with actual brand logos uploaded via the admin panel. If no logo is uploaded, the 2-letter icon code (SF, CF, etc.) will show as fallback.</p>
+</div>
