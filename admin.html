@@ -7,6 +7,7 @@
   <title>Waterflo Admin</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/admin.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="admin-page">
 
@@ -31,6 +32,7 @@
     <button class="admin-tab" data-tab="users" onclick="switchTab('users')">Users <span class="tab-badge" id="pendingBadge" style="display:none">0</span></button>
     <button class="admin-tab" data-tab="orders" onclick="switchTab('orders')">Orders</button>
     <button class="admin-tab" data-tab="products" onclick="switchTab('products')">Products</button>
+    <button class="admin-tab" data-tab="brands" onclick="switchTab('brands')">Brands</button>
     <button class="admin-tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
   </nav>
 
@@ -166,6 +168,15 @@
       <div class="table-footer">
         <span id="prodCount">0 products</span>
       </div>
+    </section>
+
+    <!-- ═══ BRANDS TAB ═══ -->
+    <section class="tab-panel" id="panel-brands">
+      <div class="panel-toolbar">
+        <h2>Brand Management</h2>
+        <p style="color:var(--text-secondary);font-size:0.82rem">Upload logos, banners, and customize brand appearance</p>
+      </div>
+      <div class="brand-mgmt-grid" id="brandMgmtGrid"></div>
     </section>
 
     <!-- ═══ SETTINGS TAB ═══ -->
@@ -466,6 +477,78 @@
     </div>
   </div>
 
+  <!-- ═══ BRAND EDIT MODAL ═══ -->
+  <div class="modal" id="brandEditModal">
+    <div class="modal-content" style="max-width:500px">
+      <div class="modal-header">
+        <h2 id="brandEditTitle">Edit Brand</h2>
+        <button onclick="closeModal('brandEditModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="brandEditForm" onsubmit="saveBrandEdit(event)">
+          <input type="hidden" id="be_id">
+
+          <div class="form-group">
+            <label>Brand Logo</label>
+            <div class="brand-upload-area" id="beLogoArea">
+              <div class="brand-upload-preview" id="beLogoPreview" style="display:none">
+                <img id="beLogoImg" src="" alt="Logo">
+                <button type="button" class="brand-upload-remove" onclick="removeBrandImage('logo')">Remove</button>
+              </div>
+              <div class="brand-upload-dropzone" id="beLogoDrop">
+                <input type="file" id="beLogoFile" accept=".jpg,.jpeg,.png,.webp" onchange="previewBrandImage(this, 'logo')" style="display:none">
+                <button type="button" class="brand-upload-btn" onclick="document.getElementById('beLogoFile').click()">Upload Logo</button>
+                <small>Square image, JPG/PNG/WebP, max 2MB</small>
+              </div>
+            </div>
+            <input type="hidden" id="be_logo_url">
+          </div>
+
+          <div class="form-group">
+            <label>Banner Image (optional)</label>
+            <div class="brand-upload-area" id="beBannerArea">
+              <div class="brand-upload-preview wide" id="beBannerPreview" style="display:none">
+                <img id="beBannerImg" src="" alt="Banner">
+                <button type="button" class="brand-upload-remove" onclick="removeBrandImage('banner')">Remove</button>
+              </div>
+              <div class="brand-upload-dropzone" id="beBannerDrop">
+                <input type="file" id="beBannerFile" accept=".jpg,.jpeg,.png,.webp" onchange="previewBrandImage(this, 'banner')" style="display:none">
+                <button type="button" class="brand-upload-btn" onclick="document.getElementById('beBannerFile').click()">Upload Banner</button>
+                <small>Wide image for brand page hero, max 2MB</small>
+              </div>
+            </div>
+            <input type="hidden" id="be_banner_url">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Brand Color</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="be_color" style="width:40px;height:34px;padding:2px;border:1px solid var(--border);border-radius:4px;cursor:pointer">
+                <input type="text" id="be_color_hex" placeholder="#c62828" style="flex:1" oninput="document.getElementById('be_color').value=this.value">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Active</label>
+              <select id="be_active" style="width:100%;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit">
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Tagline</label>
+            <input type="text" id="be_tagline" placeholder="e.g. Always Ahead In Quality">
+          </div>
+
+          <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:8px">Save Changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/icons.js"></script>
   <script>
     // ═══ HTML ESCAPING ═══
     function escapeHtml(str) {
@@ -532,6 +615,7 @@
       if (tab === 'users') loadUsers();
       if (tab === 'orders') loadOrders();
       if (tab === 'products') loadProducts();
+      if (tab === 'brands') loadBrandsMgmt();
       if (tab === 'settings') loadSettings();
     }
 
@@ -554,6 +638,9 @@
       return '<span class="status-badge" style="background:' + c + '">' + status + '</span>';
     }
 
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
     function closeModal(id) {
       document.getElementById(id).classList.remove('open');
     }
@@ -1039,10 +1126,17 @@
 
       var html = '<p style="margin-bottom:12px"><strong>' + escapeHtml(user.company_name) + '</strong></p>';
       html += '<form id="userBrandsForm" onsubmit="saveUserBrands(event,' + userId + ')">';
+      html += '<div class="brand-chip-grid">';
       allBrands.forEach(function(b) {
-        var checked = userBrandIds.includes(b.id) ? ' checked' : '';
-        html += '<label class="checkbox-row"><input type="checkbox" name="brands" value="' + escapeHtml(b.id) + '"' + checked + '> ' + escapeHtml(b.short_name || b.name) + '</label>';
+        var isActive = userBrandIds.includes(b.id);
+        html += '<label class="brand-chip' + (isActive ? ' active' : '') + '">'
+          + '<input type="checkbox" name="brands" value="' + escapeHtml(b.id) + '"' + (isActive ? ' checked' : '') + ' style="display:none" onchange="this.closest(\'.brand-chip\').classList.toggle(\'active\',this.checked)">'
+          + '<span class="brand-chip-dot" style="background:' + (b.color || '#455a64') + '">' + escapeHtml((b.short_name || b.name || '').substring(0, 2)) + '</span>'
+          + escapeHtml(b.short_name || b.name)
+          + '<span class="brand-chip-check">' + (isActive && typeof wfIcon === 'function' ? wfIcon('check', 'sm') : '') + '</span>'
+          + '</label>';
       });
+      html += '</div>';
       html += '<button type="submit" class="btn-admin-primary" style="width:100%;margin-top:12px">Save</button>';
       html += '</form>';
 
@@ -1890,6 +1984,143 @@
         setTimeout(function() { msg.style.display = 'none'; }, 2000);
       } else {
         alert('Failed to save settings');
+      }
+    }
+
+    // ═══ BRANDS TAB ═══
+
+    async function loadBrandsMgmt() {
+      var grid = document.getElementById('brandMgmtGrid');
+      if (!grid) return;
+      grid.innerHTML = '<p style="text-align:center;padding:24px;color:#888">Loading...</p>';
+
+      var r = await fetch('/api/admin/brands');
+      if (!r.ok) { grid.innerHTML = '<p style="text-align:center;color:#c62828">Error loading brands</p>'; return; }
+      var data = await r.json();
+      var brands = data.brands || [];
+
+      grid.innerHTML = brands.map(function(b) {
+        var logoHtml = b.logo_url
+          ? '<img src="' + escapeHtml(b.logo_url) + '" alt="" class="bmg-logo">'
+          : '<div class="bmg-icon" style="background:' + (b.color || '#455a64') + '">' + escapeHtml((b.short_name || b.name || '').substring(0, 2)) + '</div>';
+
+        return '<div class="bmg-card" onclick="openBrandEdit(\'' + escapeHtml(b.id) + '\')">'
+          + '<div class="bmg-logo-area">' + logoHtml + '</div>'
+          + '<div class="bmg-info">'
+          + '<div class="bmg-name">' + escapeHtml(b.short_name || b.name) + '</div>'
+          + '<div class="bmg-tagline">' + escapeHtml(b.tagline || '') + '</div>'
+          + '<div class="bmg-status">'
+          + (b.logo_url ? '<span class="bmg-badge bmg-badge-ok">Logo</span>' : '<span class="bmg-badge">No logo</span>')
+          + (b.banner_url ? '<span class="bmg-badge bmg-badge-ok">Banner</span>' : '')
+          + (b.active === 0 ? '<span class="bmg-badge bmg-badge-warn">Inactive</span>' : '')
+          + '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    var brandEditData = {};
+
+    async function openBrandEdit(brandId) {
+      var r = await fetch('/api/admin/brands');
+      if (!r.ok) return;
+      var data = await r.json();
+      var b = (data.brands || []).find(function(x) { return x.id === brandId; });
+      if (!b) return;
+
+      brandEditData = { id: b.id, logo_url: b.logo_url, banner_url: b.banner_url };
+
+      document.getElementById('be_id').value = b.id;
+      document.getElementById('brandEditTitle').textContent = 'Edit: ' + (b.short_name || b.name);
+      document.getElementById('be_tagline').value = b.tagline || '';
+      document.getElementById('be_color').value = b.color || '#455a64';
+      document.getElementById('be_color_hex').value = b.color || '#455a64';
+      document.getElementById('be_active').value = b.active !== undefined ? b.active : 1;
+      document.getElementById('be_logo_url').value = b.logo_url || '';
+      document.getElementById('be_banner_url').value = b.banner_url || '';
+
+      // Logo preview
+      if (b.logo_url) {
+        document.getElementById('beLogoImg').src = b.logo_url;
+        document.getElementById('beLogoPreview').style.display = '';
+        document.getElementById('beLogoDrop').style.display = 'none';
+      } else {
+        document.getElementById('beLogoPreview').style.display = 'none';
+        document.getElementById('beLogoDrop').style.display = '';
+      }
+
+      // Banner preview
+      if (b.banner_url) {
+        document.getElementById('beBannerImg').src = b.banner_url;
+        document.getElementById('beBannerPreview').style.display = '';
+        document.getElementById('beBannerDrop').style.display = 'none';
+      } else {
+        document.getElementById('beBannerPreview').style.display = 'none';
+        document.getElementById('beBannerDrop').style.display = '';
+      }
+
+      openModal('brandEditModal');
+    }
+
+    async function previewBrandImage(input, type) {
+      var file = input.files[0];
+      if (!file) return;
+
+      var formData = new FormData();
+      formData.append('image', file);
+
+      var r = await fetch('/api/admin/brands/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!r.ok) { alert('Upload failed'); return; }
+      var data = await r.json();
+
+      if (type === 'logo') {
+        document.getElementById('be_logo_url').value = data.image_url;
+        document.getElementById('beLogoImg').src = data.image_url;
+        document.getElementById('beLogoPreview').style.display = '';
+        document.getElementById('beLogoDrop').style.display = 'none';
+      } else {
+        document.getElementById('be_banner_url').value = data.image_url;
+        document.getElementById('beBannerImg').src = data.image_url;
+        document.getElementById('beBannerPreview').style.display = '';
+        document.getElementById('beBannerDrop').style.display = 'none';
+      }
+    }
+
+    function removeBrandImage(type) {
+      if (type === 'logo') {
+        document.getElementById('be_logo_url').value = '';
+        document.getElementById('beLogoPreview').style.display = 'none';
+        document.getElementById('beLogoDrop').style.display = '';
+        document.getElementById('beLogoFile').value = '';
+      } else {
+        document.getElementById('be_banner_url').value = '';
+        document.getElementById('beBannerPreview').style.display = 'none';
+        document.getElementById('beBannerDrop').style.display = '';
+        document.getElementById('beBannerFile').value = '';
+      }
+    }
+
+    async function saveBrandEdit(e) {
+      e.preventDefault();
+      var brandId = document.getElementById('be_id').value;
+      var body = {
+        logo_url: document.getElementById('be_logo_url').value || null,
+        banner_url: document.getElementById('be_banner_url').value || null,
+        tagline: document.getElementById('be_tagline').value,
+        color: document.getElementById('be_color_hex').value || document.getElementById('be_color').value,
+        active: parseInt(document.getElementById('be_active').value)
+      };
+
+      var r = await apiPut('/api/admin/brands/' + brandId, body);
+      if (r.ok) {
+        closeModal('brandEditModal');
+        loadBrandsMgmt();
+      } else {
+        alert(r.data.error || 'Error saving brand');
       }
     }
 
