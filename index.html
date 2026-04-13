@@ -14,37 +14,41 @@
 
   <!-- HEADER -->
   <header class="header">
-    <div class="logo-wrap">
-      <div>
-        <div class="logo-text">Water<span>flo</span>&reg;</div>
-        <span class="logo-sub">Distributor Order Portal</span>
+    <div class="header-top">
+      <div class="logo-wrap">
+        <div class="logo-mark">W</div>
+        <div>
+          <div class="logo-text">Water<span>flo</span>&reg;</div>
+          <span class="logo-sub">Distributor Order Portal</span>
+        </div>
+      </div>
+      <div class="header-user">
+        <div class="header-user-info">
+          <span class="header-user-name" id="userInfo"></span>
+          <span class="header-user-role" id="userRole"></span>
+        </div>
+        <div class="header-avatar" id="userAvatar"></div>
       </div>
     </div>
-    <div class="header-actions">
-      <span class="user-info" id="userInfo"></span>
-      <button class="cart-btn" id="homeCartBtn" onclick="toggleHomeCart()" title="Cart">
-        &#x1F6D2; <span class="cart-label">Cart</span>
-        <span class="cart-badge" id="homeCartBadge" style="display:none">0</span>
-      </button>
-      <button class="cart-btn" id="myOrdersBtn" onclick="toggleMyOrders()" title="My Orders">&#x1F4CB; Orders</button>
-      <a href="/admin.html" class="cart-btn" id="adminLink" style="display:none;text-decoration:none;color:white" title="Admin Dashboard">&#x2699; Admin</a>
-      <button class="cart-btn" id="logoutBtn" onclick="handleLogout()" title="Logout">&#x23FB; Logout</button>
-    </div>
+    <nav class="header-nav">
+      <a href="/" class="nav-item active" id="navBrands"></a>
+      <button class="nav-item" id="homeCartBtn" onclick="toggleHomeCart()"></button>
+      <button class="nav-item" id="myOrdersBtn" onclick="toggleMyOrders()"></button>
+      <a href="/admin.html" class="nav-item" id="adminLink" style="display:none"></a>
+      <button class="nav-item nav-item-right" id="logoutBtn" onclick="handleLogout()"></button>
+    </nav>
   </header>
 
-  <!-- HERO -->
-  <div class="landing-hero" id="landingHero">
-    <h1>Waterflo Pipes &amp; Fittings</h1>
-    <p>Select a brand to browse products and place orders</p>
-    <!-- Product Lookup Search -->
-    <div class="home-search-wrap" id="homeSearchWrap">
-      <span class="home-search-icon">&#x1F50D;</span>
-      <input type="search" class="home-search-input" id="homeSearchInput" placeholder="Search products across all brands..." autocomplete="off"
+  <!-- SEARCH AREA -->
+  <div class="search-area" id="searchArea">
+    <div class="search-bar-wrap" id="homeSearchWrap">
+      <span class="search-bar-icon"></span>
+      <input type="search" class="search-bar-input" id="homeSearchInput" placeholder="Search products across all brands..." autocomplete="off"
         oninput="homeProductSearch()" onkeydown="homeSearchKeydown(event)">
-      <button class="home-search-clear" id="homeSearchClear" onclick="clearHomeSearch()">&times;</button>
+      <button class="search-bar-clear" id="homeSearchClear" onclick="clearHomeSearch()">&times;</button>
       <div class="home-lookup-results" id="homeLookupResults"></div>
     </div>
-    <!-- Selected product detail -->
+    <div class="search-bar-hint">Search by name, code, or size</div>
     <div class="home-product-detail" id="homeProductDetail"></div>
   </div>
 
@@ -88,13 +92,13 @@
         <div class="cart-header-sub"><span id="homeCartItemCount">0 items</span></div>
       </div>
       <div class="cart-header-actions">
-        <button class="btn-icon" id="homeClearCartBtn" onclick="clearHomeCart()" title="Clear cart">&#x1F5D1; Clear</button>
+        <button class="btn-icon" id="homeClearCartBtn" onclick="clearHomeCart()" title="Clear cart">Clear</button>
         <button id="homeCloseCart" onclick="toggleHomeCart()" style="background:none;border:none;color:white;font-size:1.3rem;cursor:pointer">&times;</button>
       </div>
     </div>
     <div class="cart-items" id="homeCartItems">
       <div class="cart-empty">
-        <div class="cart-empty-icon">&#x1F6D2;</div>
+        <div class="cart-empty-icon"></div>
         <p>Your cart is empty</p>
         <p class="cart-empty-sub">Search for products above to add items</p>
       </div>
@@ -105,7 +109,7 @@
         <span id="homeCartTotal">&#x20B9;0.00</span>
       </div>
       <div class="cart-footer-btns">
-        <button class="btn-quote" onclick="goToCartBrand()">&#x1F6D2; Continue Shopping</button>
+        <button class="btn-quote" onclick="goToCartBrand()">Continue Shopping</button>
       </div>
     </div>
   </aside>
@@ -115,6 +119,7 @@
     <p>www.waterflo.in</p>
   </footer>
 
+  <script src="js/icons.js"></script>
   <script src="js/brand-config.js"></script>
   <script>
     // Load user info and filter brands by access
@@ -126,6 +131,21 @@
         const user = data.user;
         document.getElementById('userInfo').textContent = user.company_name || user.contact_name;
         if (user.role === 'admin') document.getElementById('adminLink').style.display = '';
+
+        // Populate nav items with SVG icons
+        document.getElementById('navBrands').innerHTML = wfIcon('home', 'sm') + ' Brands';
+        document.getElementById('homeCartBtn').innerHTML = wfIcon('cart', 'sm') + ' <span class="cart-label">Cart</span><span class="cart-badge" id="homeCartBadge" style="display:none">0</span>';
+        document.getElementById('myOrdersBtn').innerHTML = wfIcon('file-text', 'sm') + ' Orders';
+        document.getElementById('adminLink').innerHTML = wfIcon('settings', 'sm') + ' Admin';
+        document.getElementById('logoutBtn').innerHTML = wfIcon('log-out', 'sm') + ' Logout';
+
+        document.getElementById('userRole').textContent = user.role === 'admin' ? 'Admin' : user.role === 'salesman' ? 'Salesman' : 'Dealer';
+        document.getElementById('userAvatar').textContent = (user.company_name || user.contact_name || 'U').substring(0, 2).toUpperCase();
+
+        // Search bar icon
+        var searchIcon = document.querySelector('.search-bar-icon');
+        if (searchIcon) searchIcon.innerHTML = wfIcon('search', 'sm');
+
         if (user.role === 'salesman' && data.linked_dealers) {
           setTimeout(function() { renderDealerLanding(data.linked_dealers); }, 0);
         }
@@ -145,35 +165,56 @@
     }
 
     function renderBrandGrid(brands) {
-      const grid = document.getElementById('brandGrid');
-      // Match brand metadata from BRANDS config
-      grid.innerHTML = brands.map(b => {
-        const cfg = getBrandById(b.id) || b;
-        return `
-        <a href="brand.html?brand=${b.id}" class="brand-card" style="--brand-color: ${cfg.color || b.color}">
-          <div class="brand-card-icon" style="background: ${cfg.heroGradient || ''}">${cfg.icon || b.short_name || ''}</div>
-          <div class="brand-card-body">
-            <div class="brand-card-name">${cfg.name || b.name}</div>
-            <div class="brand-card-tagline">${cfg.tagline || b.tagline || ''}</div>
-            <div class="brand-card-date">w.e.f. ${cfg.priceDate || b.price_date || ''}</div>
-          </div>
-          <div class="brand-card-arrow">&rarr;</div>
-        </a>`;
+      var grid = document.getElementById('brandGrid');
+      grid.innerHTML = brands.map(function(b) {
+        var cfg = getBrandById(b.id) || b;
+        var gradient = cfg.heroGradient || 'linear-gradient(160deg, ' + (cfg.color || '#455a64') + ', ' + (cfg.color || '#455a64') + ')';
+        var logoHtml = b.logo_url
+          ? '<img src="' + (b.logo_url || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" alt="' + ((cfg.shortName || cfg.name || '')).replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" class="brand-card-logo">'
+          : '<div class="brand-card-icon-text">' + (cfg.icon || (cfg.shortName || '').substring(0, 2)) + '</div>';
+
+        return '<a href="brand.html?brand=' + b.id + '" class="brand-card" style="background:' + gradient + '">'
+          + '<div class="brand-card-logo-area">' + logoHtml + '</div>'
+          + '<div class="brand-card-info">'
+          + '<div class="brand-card-name">' + (cfg.name || b.name || '') + '</div>'
+          + '<div class="brand-card-tagline">' + (cfg.tagline || b.tagline || '') + '</div>'
+          + '</div>'
+          + '</a>';
       }).join('');
     }
 
     function renderDealerLanding(dealers) {
-      var lh = document.getElementById('landingHero');
+      var searchArea = document.getElementById('searchArea');
       var currentDealer = localStorage.getItem('wf_salesman_dealer');
-      var html = '<div style="margin:16px auto;max-width:400px;background:rgba(255,255,255,0.1);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.2)">';
-      html += '<p style="margin-bottom:8px;font-weight:600">👤 Placing order on behalf of:</p>';
-      html += '<select id="landingDealerSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;color:#333;font-size:1rem" onchange="localStorage.setItem(\'wf_salesman_dealer\', this.value);">';
+      var selectedDealer = currentDealer ? dealers.find(function(d) { return d.id == currentDealer; }) : null;
+
+      var html = '<div class="dealer-selector-card">'
+        + '<div class="dealer-selector-header">'
+        + wfIcon('users', 'sm') + ' <span>Placing Order On Behalf Of</span>'
+        + '</div>'
+        + '<div class="dealer-selector-body">';
+
+      if (selectedDealer) {
+        var initials = (selectedDealer.company_name || 'D').substring(0, 2).toUpperCase();
+        html += '<div class="dealer-selected">'
+          + '<div class="dealer-avatar">' + initials + '</div>'
+          + '<div class="dealer-info">'
+          + '<div class="dealer-name">' + (selectedDealer.company_name || '') + '</div>'
+          + '<div class="dealer-meta">' + (selectedDealer.address || '') + (selectedDealer.discount_percent ? ' &middot; ' + selectedDealer.discount_percent + '% discount' : '') + '</div>'
+          + '</div>'
+          + '<button class="dealer-change" onclick="this.closest(\'.dealer-selector-body\').querySelector(\'.dealer-dropdown\').style.display=\'block\';this.closest(\'.dealer-selected\').style.display=\'none\'">Change</button>'
+          + '</div>';
+      }
+
+      html += '<div class="dealer-dropdown"' + (selectedDealer ? ' style="display:none"' : '') + '>'
+        + '<select class="dealer-select" onchange="localStorage.setItem(\'wf_salesman_dealer\', this.value);location.reload()">';
       if (!currentDealer) html += '<option value="">-- Select Dealer --</option>';
       dealers.forEach(function(d) {
-        html += '<option value="' + d.id + '"' + (currentDealer == d.id ? ' selected' : '') + '>' + d.company_name + '</option>';
+        html += '<option value="' + d.id + '"' + (currentDealer == d.id ? ' selected' : '') + '>' + (d.company_name || '') + '</option>';
       });
-      html += '</select></div>';
-      lh.insertAdjacentHTML('beforeend', html);
+      html += '</select></div></div></div>';
+
+      searchArea.insertAdjacentHTML('afterbegin', html);
     }
 
     async function handleLogout() {
@@ -530,7 +571,7 @@
       if (homeCart.length === 0) {
         container.innerHTML =
           '<div class="cart-empty">'
-          + '<div class="cart-empty-icon">&#x1F6D2;</div>'
+          + '<div class="cart-empty-icon">' + wfIcon('cart', 'lg') + '</div>'
           + '<p>Your cart is empty</p>'
           + '<p class="cart-empty-sub">Search for products above to add items</p>'
           + '</div>';
@@ -613,6 +654,8 @@
     document.addEventListener('DOMContentLoaded', function() {
       initLanding();
       updateHomeCartUI();
+      var cartEmptyIcon = document.querySelector('.cart-empty-icon');
+      if (cartEmptyIcon && !cartEmptyIcon.innerHTML.trim()) cartEmptyIcon.innerHTML = wfIcon('cart', 'lg');
     });
   </script>
 </body>
