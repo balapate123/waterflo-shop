@@ -3,11 +3,58 @@
 .admin-page {
   background: #f0f2f5;
   min-height: 100vh;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.admin-header {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+  color: white;
+  padding: 0 16px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .admin-header .logo-sub {
   color: #f9a825;
   font-weight: 700;
+}
+
+.admin-header .back-btn {
+  color: white;
+  text-decoration: none;
+  font-size: 1.2rem;
+  margin-right: 8px;
+}
+
+.admin-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-header .user-info {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.admin-header .cart-btn,
+.admin-header #adminLogoutBtn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-header .cart-btn:hover,
+.admin-header #adminLogoutBtn:hover {
+  background: rgba(255,255,255,0.25);
 }
 
 /* ─── TAB NAV ────────────────────────────────────────────────────────────── */
@@ -19,7 +66,7 @@
   overflow-x: auto;
   scrollbar-width: none;
   position: sticky;
-  top: 60px;
+  top: 56px;
   z-index: 90;
 }
 .admin-tabs::-webkit-scrollbar { display: none; }
@@ -82,7 +129,8 @@
   background: white;
   border-radius: 10px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #f1f5f9;
 }
 .stat-value {
   font-size: 1.5rem;
@@ -189,6 +237,7 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  font-family: inherit;
 }
 .btn-admin-primary:hover { background: #0d1557; }
 
@@ -219,15 +268,15 @@
   font-size: 0.82rem;
 }
 .admin-table th {
-  background: #f5f7ff;
-  color: #1a237e;
+  background: #f8fafc;
+  color: #334155;
   padding: 10px 8px;
   text-align: left;
   font-weight: 700;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid #e2e8f0;
   white-space: nowrap;
 }
 .admin-table td {
@@ -402,4 +451,184 @@
   .toolbar-actions { flex-direction: column; }
   .toolbar-actions select,
   .toolbar-search { width: 100%; }
+}
+
+/* ─── BRAND MANAGEMENT ───────────────────────────────────────────────────── */
+.brand-mgmt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 600px) { .brand-mgmt-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .brand-mgmt-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.bmg-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1.5px solid #e2e8f0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.bmg-card:hover {
+  border-color: #1a237e;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.bmg-logo-area { margin-bottom: 10px; }
+
+.bmg-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 10px;
+  margin: 0 auto;
+  display: block;
+}
+
+.bmg-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.bmg-name { font-size: 0.88rem; font-weight: 700; color: #1e293b; }
+.bmg-tagline { font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+
+.bmg-status { margin-top: 8px; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.bmg-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+.bmg-badge-ok { background: #dcfce7; color: #16a34a; }
+.bmg-badge-warn { background: #fef3c7; color: #d97706; }
+
+/* ─── BRAND UPLOAD ────────────────────────────────────────────────────────── */
+.brand-upload-area { margin-top: 6px; }
+
+.brand-upload-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.brand-upload-preview img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.brand-upload-preview.wide img {
+  width: 160px;
+  height: 80px;
+}
+
+.brand-upload-remove {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.brand-upload-dropzone {
+  padding: 16px;
+  border: 2px dashed #e2e8f0;
+  border-radius: 8px;
+  text-align: center;
+}
+.brand-upload-dropzone small {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  margin-top: 6px;
+}
+
+.brand-upload-btn {
+  background: #1a237e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.brand-upload-btn:hover { background: #0f172a; }
+
+/* ─── BRAND CHIPS ─────────────────────────────────────────────────────────── */
+.brand-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.brand-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.brand-chip:hover { border-color: #94a3b8; }
+.brand-chip.active {
+  border-color: #1a237e;
+  background: #eff6ff;
+  color: #1a237e;
+}
+
+.brand-chip-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.brand-chip-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+.brand-chip.active .brand-chip-check {
+  background: #1a237e;
+  border-color: #1a237e;
+  color: white;
 }

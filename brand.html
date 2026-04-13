@@ -14,19 +14,18 @@
 
   <!-- HEADER -->
   <header class="header" id="brandHeader">
-    <div class="logo-wrap">
-      <a href="index.html" class="back-btn" title="Back to Brands">&larr;</a>
-      <div>
-        <div class="logo-text">Water<span>flo</span>&reg;</div>
-        <span class="logo-sub">Pipes &amp; Fittings</span>
+    <div class="header-top">
+      <div class="logo-wrap">
+        <a href="index.html" class="back-btn" title="Back to Brands"></a>
+        <div>
+          <div class="logo-text">Water<span>flo</span>&reg;</div>
+          <span class="logo-sub">Pipes &amp; Fittings</span>
+        </div>
       </div>
-    </div>
-    <div class="header-actions">
-      <button class="cart-btn" id="cartBtn" aria-label="Open Cart">
-        &#x1F6D2; <span class="cart-label">Cart</span>
-        <span class="cart-badge" id="cartBadge" style="display:none">0</span>
-      </button>
-      <button class="cart-btn" id="logoutBtn" onclick="handleLogout()" title="Logout" style="padding:8px 10px">&#x23FB;</button>
+      <div class="header-user">
+        <button class="nav-item" id="cartBtn" aria-label="Open Cart"></button>
+        <button class="nav-item" id="logoutBtn" onclick="handleLogout()" title="Logout"></button>
+      </div>
     </div>
   </header>
 
@@ -44,7 +43,7 @@
   <!-- FILTER BAR -->
   <div class="filter-bar">
     <div class="search-wrap">
-      <span class="search-icon">&#x1F50D;</span>
+      <span class="search-icon" id="filterSearchIcon"></span>
       <input type="search" id="searchInput" placeholder="Search by name, code, size..." autocomplete="off">
       <button id="clearSearch" title="Clear search">&#x2715;</button>
     </div>
@@ -131,6 +130,7 @@
   </div>
 
   <!-- SCRIPTS: brand-config first, then brand data (dynamic), then app -->
+  <script src="js/icons.js"></script>
   <script src="js/brand-config.js"></script>
   <script>
     // Dynamically load brand data file

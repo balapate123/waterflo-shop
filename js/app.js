@@ -424,9 +424,9 @@ function updateQty(cartKey, delta) {
 function showAddedFeedback(code) {
   var btn = document.querySelector('[data-code="' + code + '"] .add-btn');
   if (!btn) return;
-  btn.textContent = '\u2713 Added!';
+  btn.innerHTML = wfIcon('check', 'sm') + ' Added!';
   btn.classList.add('added');
-  setTimeout(function() { btn.textContent = '+ Add to Cart'; btn.classList.remove('added'); }, 1400);
+  setTimeout(function() { btn.innerHTML = wfIcon('plus', 'sm') + ' Add to Cart'; btn.classList.remove('added'); }, 1400);
 }
 
 function updateCartUI() {
@@ -473,7 +473,7 @@ function renderCartItems() {
   if (cart.length === 0) {
     container.innerHTML =
       '<div class="cart-empty">'
-      + '<div class="cart-empty-icon">\uD83D\uDED2</div>'
+      + '<div class="cart-empty-icon">' + wfIcon('cart', 'lg') + '</div>'
       + '<p>Your cart is empty</p>'
       + '<p class="cart-empty-sub">Select a product, choose unit size, then add to cart</p>'
       + '</div>';
@@ -528,7 +528,7 @@ function renderCartItems() {
         +   buildCartPicker(item)
         +   '<div class="ci-footer">'
         +     '<span class="ci-pcs">' + pcsStr + '</span>'
-        +     '<button class="cart-remove" onclick="removeFromCart(\'' + item.cartKey + '\')">\uD83D\uDDD1\uFE0F</button>'
+        +     '<button class="cart-remove" onclick="removeFromCart(\'' + item.cartKey + '\')">' + wfIcon('trash', 'sm') + '</button>'
         +   '</div>'
         + '</div>'
         + '</div>';
@@ -584,14 +584,12 @@ function getAvailableSubcats() {
 
 function getCategoryIcon(code) {
   var p = PRODUCTS.find(function(x) { return x.code === code; });
-  if (!p) return '\uD83D\uDCE6';
-  var cat = CATEGORIES.find(function(c) { return c.id === p.category; });
-  return (cat || {}).icon || '\uD83D\uDCE6';
+  if (!p) return wfCategoryIcon('all', 'sm');
+  return wfCategoryIcon(p.category, 'sm');
 }
 
 function getProductIcon(p) {
-  var icons = { pipes:'\uD83D\uDCCF', fittings:'\u2699\uFE0F', reducers:'\uD83D\uDD00', brass:'\uD83D\uDD29', valves:'\uD83D\uDEBF', mixer:'\uD83D\uDD27', accessories:'\uD83E\uDDF4', fabricated:'\uD83D\uDD29' };
-  return icons[p.category] || '\uD83D\uDCE6';
+  return wfCategoryIcon(p.category, 'lg');
 }
 
 function renderGridCard(p) {
@@ -617,7 +615,7 @@ function renderGridCard(p) {
 
   var imageContent = p.image_url
     ? '<img src="' + escapeHtml(p.image_url) + '" alt="' + escapeHtml(p.name) + '" class="product-img">'
-    : '<span class="product-emoji">' + getProductIcon(p) + '</span>';
+    : '<span class="product-icon">' + wfCategoryIcon(p.category, 'lg') + '</span>';
 
   return '<div class="product-card' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="product-image cat-' + p.category + '">'
@@ -644,7 +642,7 @@ function renderGridCard(p) {
       +     '<input type="number" class="card-qty-input" value="1" min="1" max="999">'
       +     '<button class="qi-btn" onclick="cardQtyDelta(\'' + p.code + '\',1)">+</button>'
       + '</div>'
-      +   '<button class="add-btn" onclick="addToCart(\'' + p.code + '\')">+ Add to Cart</button>'
+      +   '<button class="add-btn" onclick="addToCart(\'' + p.code + '\')">' + wfIcon('plus', 'sm') + ' Add to Cart</button>'
       + '</div>'
       : '')
     + '</div>';
@@ -666,7 +664,7 @@ function renderListCard(p) {
 
   var listImageContent = p.image_url
     ? '<img src="' + escapeHtml(p.image_url) + '" alt="' + escapeHtml(p.name) + '" class="pli-img">'
-    : '<span class="pli-emoji">' + getProductIcon(p) + '</span>';
+    : '<span class="pli-icon">' + wfCategoryIcon(p.category) + '</span>';
 
   return '<div class="pli' + (inCart ? ' has-in-cart' : '') + '" data-code="' + p.code + '">'
     + '<div class="pli-thumb cat-' + p.category + '">'
@@ -741,7 +739,7 @@ function renderCategoryTabs() {
     return '<button class="cat-tab ' + (activeCategory === c.id ? 'active' : '') + '"'
       + ' onclick="setCategory(\'' + c.id + '\')"'
       + ' style="' + (activeCategory === c.id ? 'background:' + c.color + ';border-color:' + c.color + ';color:white' : '') + '">'
-      + c.icon + ' ' + c.label
+      + c.label
       + '</button>';
   }).join('');
 }
@@ -1135,9 +1133,9 @@ function renderDealerPickerStore() {
   var header = document.querySelector('.header');
   if (!header) return;
   var currentDealer = localStorage.getItem('wf_salesman_dealer');
-  var html = '<div style="background:#f9a825;color:#1a237e;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;font-weight:600">';
-  html += '<span>👤 Salesman Mode</span>';
-  html += '<select id="storeDealerSelect" style="padding:4px;border-radius:4px;border:none;max-width:200px" onchange="changeStoreDealer(this.value)">';
+  var html = '<div class="salesman-bar">';
+  html += '<span>' + wfIcon('users', 'sm') + ' Salesman Mode</span>';
+  html += '<select id="storeDealerSelect" class="dealer-select" style="max-width:200px" onchange="changeStoreDealer(this.value)">';
   if (!currentDealer) html += '<option value="">-- Select Dealer --</option>';
   linkedDealers.forEach(function(d) {
     html += '<option value="' + d.id + '"' + (currentDealer == d.id ? ' selected' : '') + '>' + escapeHtml(d.company_name) + '</option>';
@@ -1195,6 +1193,45 @@ function init() {
   // Apply brand theme
   applyBrandTheme();
 
+  // Populate header icons
+  var backBtn = document.querySelector('.back-btn');
+  if (backBtn) backBtn.innerHTML = wfIcon('arrow-left', 'sm');
+  var cartBtn = document.getElementById('cartBtn');
+  if (cartBtn) cartBtn.innerHTML = wfIcon('cart', 'sm') + ' <span class="cart-label">Cart</span><span class="cart-badge" id="cartBadge" style="display:none">0</span>';
+  var logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.innerHTML = wfIcon('log-out', 'sm');
+
+  var filterSearchIcon = document.getElementById('filterSearchIcon');
+  if (filterSearchIcon) filterSearchIcon.innerHTML = wfIcon('search', 'sm');
+
+  // Replace remaining emoji entities with SVG icons
+  var clearSearchBtn = document.getElementById('clearSearch');
+  if (clearSearchBtn) clearSearchBtn.innerHTML = wfIcon('x', 'sm');
+  var btnGridView = document.getElementById('btnGridView');
+  if (btnGridView) btnGridView.innerHTML = wfIcon('grid-view', 'sm') + ' Grid';
+  var btnListView = document.getElementById('btnListView');
+  if (btnListView) btnListView.innerHTML = wfIcon('list', 'sm') + ' List';
+  var clearCartBtn = document.getElementById('clearCartBtn');
+  if (clearCartBtn) clearCartBtn.innerHTML = wfIcon('trash', 'sm') + ' Clear';
+  var closeCartBtn = document.getElementById('closeCart');
+  if (closeCartBtn) closeCartBtn.innerHTML = wfIcon('x', 'sm');
+  var btnQuote = document.getElementById('btnQuote');
+  if (btnQuote) btnQuote.innerHTML = wfIcon('file-text', 'sm') + ' Get Quote';
+  var btnOrder = document.getElementById('btnOrder');
+  if (btnOrder) btnOrder.innerHTML = wfIcon('cart', 'sm') + ' Place Order';
+  var btnPrint = document.getElementById('btnPrint');
+  if (btnPrint) btnPrint.innerHTML = wfIcon('printer', 'sm') + ' Print / Save PDF';
+  var closeQuoteBtn = document.getElementById('closeQuote');
+  if (closeQuoteBtn) closeQuoteBtn.innerHTML = wfIcon('x', 'sm');
+  var closeOrderBtn = document.getElementById('closeOrder');
+  if (closeOrderBtn) closeOrderBtn.innerHTML = wfIcon('x', 'sm');
+  // Quote modal heading
+  var quoteModalH2 = document.querySelector('#quoteModal .modal-header h2');
+  if (quoteModalH2) quoteModalH2.innerHTML = wfIcon('file-text', 'sm') + ' Quotation';
+  // Order modal heading
+  var orderModalH2 = document.querySelector('#orderModal .modal-header h2');
+  if (orderModalH2) orderModalH2.innerHTML = wfIcon('cart', 'sm') + ' Place Order';
+
   // Fetch user data (discount, name, category discounts) — non-blocking
   fetch('/api/auth/me').then(function(res) {
     if (res.ok) return res.json();
@@ -1242,20 +1279,27 @@ function init() {
   renderProducts();
   updateCartUI();
 
-  // Fetch product images from API and merge into PRODUCTS
+  // Fetch product data from API and merge into PRODUCTS (prices, packaging, images)
   var brandId = activeBrand ? activeBrand.id : '';
   if (brandId) {
     fetch('/api/brands/' + brandId + '/products')
       .then(function(res) { return res.ok ? res.json() : null; })
       .then(function(data) {
         if (!data || !data.products) return;
-        var imageMap = {};
+        var apiMap = {};
         data.products.forEach(function(p) {
-          if (p.image_url) imageMap[p.code] = p.image_url;
+          apiMap[p.code] = p;
         });
-        if (Object.keys(imageMap).length === 0) return;
+        if (Object.keys(apiMap).length === 0) return;
         PRODUCTS.forEach(function(p) {
-          if (imageMap[p.code]) p.image_url = imageMap[p.code];
+          var api = apiMap[p.code];
+          if (!api) return;
+          if (api.image_url) p.image_url = api.image_url;
+          if (api.rate != null) p.rate = api.rate;
+          if (api.rate_3mtr != null) p.rate_3mtr = api.rate_3mtr;
+          if (api.rate_5mtr != null) p.rate_5mtr = api.rate_5mtr;
+          if (api.std_pkg != null) p.std_pkg = api.std_pkg;
+          if (api.qty_box != null) p.qty_box = api.qty_box;
         });
         renderProducts();
       })
