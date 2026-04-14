@@ -215,16 +215,30 @@
 .toolbar-search {
   border: 1.5px solid #e0e0e0;
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   font-size: 0.82rem;
   background: white;
   outline: none;
+  font-family: inherit;
+  transition: border 0.2s, box-shadow 0.2s;
 }
+.toolbar-actions select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23546e7a' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  padding-right: 32px;
+  cursor: pointer;
+}
+.toolbar-actions select:hover { border-color: #90a4ae; }
 .toolbar-search {
   min-width: 140px;
 }
 .toolbar-actions select:focus,
-.toolbar-search:focus { border-color: #1a237e; }
+.toolbar-search:focus { border-color: #1a237e; box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.08); }
 
 /* ─── ADMIN BUTTONS ───────────────────────────────────────────────────────── */
 .btn-admin-primary {
@@ -324,11 +338,19 @@
 .status-select {
   border: 1.5px solid #e0e0e0;
   border-radius: 6px;
-  padding: 4px 6px;
+  padding: 4px 24px 4px 8px;
   font-size: 0.72rem;
   cursor: pointer;
   outline: none;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23546e7a' d='M2 4l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 6px center / 10px;
+  transition: border 0.2s;
 }
+.status-select:hover { border-color: #90a4ae; }
+.status-select:focus { border-color: #1a237e; box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.08); }
 
 /* ─── SMALL BUTTONS ───────────────────────────────────────────────────────── */
 .btn-sm {

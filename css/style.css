@@ -998,20 +998,90 @@ body {
   margin-bottom: 5px;
 }
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.875rem;
   outline: none;
-  transition: border 0.2s;
+  transition: border 0.2s, box-shadow 0.2s;
   font-family: inherit;
   background: var(--bg);
 }
+.form-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23546e7a' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  padding-right: 36px;
+  cursor: pointer;
+  color: var(--text);
+}
+.form-group select:hover {
+  border-color: #90a4ae;
+}
 .form-group input:focus,
-.form-group textarea:focus { border-color: var(--primary); background: white; }
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.08);
+}
 .form-group textarea { resize: vertical; min-height: 80px; }
+
+/* ─── MODERN FILE INPUT ──────────────────────────────────────────────────── */
+.file-upload-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.file-upload-wrap input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+}
+.file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--primary, #1a237e);
+  border-radius: 8px;
+  background: rgba(26, 35, 126, 0.04);
+  color: var(--primary, #1a237e);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.file-upload-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.file-upload-wrap:hover .file-upload-btn {
+  background: var(--primary, #1a237e);
+  color: white;
+}
+.file-upload-name {
+  font-size: 0.82rem;
+  color: #78909c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .btn-submit-order {
   width: 100%;
@@ -1342,16 +1412,26 @@ body {
 
 .dealer-select {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 40px 12px 14px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text);
   background: var(--bg);
   outline: none;
   font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%231a237e' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+  cursor: pointer;
+  transition: border 0.2s, box-shadow 0.2s;
 }
-.dealer-select:focus { border-color: var(--primary); box-shadow: var(--focus-ring); }
+.dealer-select:hover { border-color: #90a4ae; }
+.dealer-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.1); }
 
 /* ─── BRAND GRID ───────────────────────────────────────────────────────────── */
 .brand-grid {
