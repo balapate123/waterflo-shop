@@ -31,10 +31,11 @@ function getProductTradeCategory(item) {
   // ── StrongFit CPVC (cpvc brand) ──
   if (brandId === 'strongfit-cpvc') {
     if (cat === 'pipes')                                      return 'CPVC Pipes';
-    if (cat === 'valves')                                     return 'uPVC Ball Valves';
+    if (cat === 'mixer')                                      return 'CPVC Brass Fittings';
+    if (cat === 'valves')                                     return 'CPVC Fittings';
     if (cat === 'brass' || sub.indexOf('brass') >= 0)         return 'CPVC Brass Fittings';
     if (cat === 'accessories' && sub === 'solventcement')     return 'CPVC / uPVC Solvent';
-    return 'CPVC Fittings'; // fittings, reducers, mixer
+    return 'CPVC Fittings'; // fittings, reducers
   }
 
   // ── SureFit uPVC Plumbing ──
@@ -178,10 +179,16 @@ function getUnitOptsCPVC(p) {
   // Fittings / accessories
   if (p.rate === 0) return [];
   var opts = [];
-  if (p.std_pkg > 1)
-    opts.push({ type: 'stdpkg', label: 'Pkg \u00B7 ' + p.std_pkg, pcs: p.std_pkg, rate: p.rate * p.std_pkg });
-  if (p.qty_box > 1 && p.qty_box !== p.std_pkg)
+  if (p.allow_packet !== 0) {
+    var pkgPcs = p.std_pkg || 1;
+    opts.push({ type: 'stdpkg', label: 'Pkg \u00B7 ' + pkgPcs, pcs: pkgPcs, rate: p.rate * pkgPcs });
+  }
+  if (p.allow_box !== 0 && (p.qty_box || 0) > 0 && p.qty_box !== p.std_pkg) {
     opts.push({ type: 'box', label: 'Box \u00B7 ' + p.qty_box.toLocaleString('en-IN'), pcs: p.qty_box, rate: p.rate * p.qty_box });
+  }
+  if (p.allow_piece === 1) {
+    opts.push({ type: 'piece', label: '1 Pc', pcs: 1, rate: p.rate });
+  }
   return opts;
 }
 
@@ -196,12 +203,16 @@ function getUnitOptsSWR(p) {
   }
   if (p.rate === 0) return [];
   var opts = [];
-  if (p.std_pkg > 1)
-    opts.push({ type: 'stdpkg', label: 'Pkg \u00B7 ' + p.std_pkg, pcs: p.std_pkg, rate: p.rate * p.std_pkg });
-  if (p.qty_box > 1 && p.qty_box !== p.std_pkg)
+  if (p.allow_packet !== 0) {
+    var pkgPcs = p.std_pkg || 1;
+    opts.push({ type: 'stdpkg', label: 'Pkg \u00B7 ' + pkgPcs, pcs: pkgPcs, rate: p.rate * pkgPcs });
+  }
+  if (p.allow_box !== 0 && (p.qty_box || 0) > 0 && p.qty_box !== p.std_pkg) {
     opts.push({ type: 'box', label: 'Box \u00B7 ' + p.qty_box, pcs: p.qty_box, rate: p.rate * p.qty_box });
-  if (opts.length === 0)
+  }
+  if (p.allow_piece === 1 || opts.length === 0) {
     opts.push({ type: 'piece', label: '1 Pc', pcs: 1, rate: p.rate });
+  }
   return opts;
 }
 
@@ -215,12 +226,16 @@ function getUnitOptsAgri(p) {
   }
   if (p.rate === 0) return [];
   var opts = [];
-  if (p.std_pkg > 1)
-    opts.push({ type: 'stdpkg', label: 'Pkg \u00B7 ' + p.std_pkg, pcs: p.std_pkg, rate: p.rate * p.std_pkg });
-  if (p.qty_box > 1 && p.qty_box !== p.std_pkg)
+  if (p.allow_packet !== 0) {
+    var pkgPcs = p.std_pkg || 1;
+    opts.push({ type: 'stdpkg', label: 'Pkg \u00B7 ' + pkgPcs, pcs: pkgPcs, rate: p.rate * pkgPcs });
+  }
+  if (p.allow_box !== 0 && (p.qty_box || 0) > 0 && p.qty_box !== p.std_pkg) {
     opts.push({ type: 'box', label: 'Box \u00B7 ' + p.qty_box, pcs: p.qty_box, rate: p.rate * p.qty_box });
-  if (opts.length === 0)
+  }
+  if (p.allow_piece === 1 || opts.length === 0) {
     opts.push({ type: 'piece', label: '1 Pc', pcs: 1, rate: p.rate });
+  }
   return opts;
 }
 
@@ -364,7 +379,7 @@ function addToCart(code) {
   } else {
     cart.push({
       cartKey: cartKey, brandId: brandId, code: p.code, name: p.name, size: p.size,
-      category: p.category, unitType: unitType, unitLabel: unitLabel,
+      category: p.category, subcategory: p.subcategory, unitType: unitType, unitLabel: unitLabel,
       pcsPerUnit: pcsPerUnit, ratePerUnit: ratePerUnit, qty: addQty
     });
   }

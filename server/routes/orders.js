@@ -99,17 +99,22 @@ router.post('/', requireAuth, (req, res) => {
   let totalAmount = 0;
   let totalDiscount = 0;
 
+  // Build items with their per-category discount info
+  const itemsWithDiscount = [];
   for (const item of items) {
     const lineTotal = (item.rate_per_unit || 0) * (item.qty || 0);
     totalAmount += lineTotal;
 
+    let itemDiscPct = 0;
     if (hasCategoryDiscounts) {
       const tradeCategory = item.trade_category || null;
-      const discPct = (tradeCategory && categoryDiscMap[tradeCategory] !== undefined)
+      itemDiscPct = (tradeCategory && categoryDiscMap[tradeCategory] !== undefined)
         ? categoryDiscMap[tradeCategory]
         : 0;
-      totalDiscount += discPct > 0 ? Math.round(lineTotal * discPct / 100 * 100) / 100 : 0;
+      totalDiscount += itemDiscPct > 0 ? Math.round(lineTotal * itemDiscPct / 100 * 100) / 100 : 0;
     }
+
+    itemsWithDiscount.push({ ...item, computed_disc_pct: itemDiscPct });
   }
 
   if (!hasCategoryDiscounts && userDiscPct > 0) {
@@ -131,8 +136,8 @@ router.post('/', requireAuth, (req, res) => {
     const orderId = orderResult.lastInsertRowid;
 
     const insertItem = db.prepare(`
-      INSERT INTO order_items (order_id, product_id, code, name, size, unit_type, unit_label, pcs_per_unit, rate_per_unit, qty)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO order_items (order_id, product_id, code, name, size, unit_type, unit_label, pcs_per_unit, rate_per_unit, qty, trade_category, discount_percent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertItems = db.transaction((orderId, items) => {
@@ -147,12 +152,14 @@ router.post('/', requireAuth, (req, res) => {
           item.unit_label,
           item.pcs_per_unit,
           item.rate_per_unit,
-          item.qty
+          item.qty,
+          item.trade_category || null,
+          item.computed_disc_pct || 0
         );
       }
     });
 
-    insertItems(orderId, items);
+    insertItems(orderId, itemsWithDiscount);
 
     res.status(201).json({
       message: 'Order placed successfully',

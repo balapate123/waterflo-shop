@@ -79,25 +79,39 @@
     h += '<td colspan="3" class="party-field">STATE:- <span class="fill-val">' + esc(party.state || '') + '</span></td>';
     h += '</tr>';
 
-    // Column headers
+    // Column headers (added Disc% column)
     h += '<tr class="sec-hdr">';
-    h += '<td class="c sz" style="width:4%;text-align:center">#</td>';
-    h += '<td class="c sz" style="width:12%">Code</td>';
-    h += '<td class="c sz" style="width:28%">Product</td>';
-    h += '<td class="c sz" style="width:8%">Size</td>';
-    h += '<td class="c sz" style="width:10%">Unit</td>';
-    h += '<td class="c sz" style="width:10%;text-align:right">Rate/Unit</td>';
-    h += '<td class="c sz" style="width:6%;text-align:center">Qty</td>';
-    h += '<td class="c sz" style="width:7%;text-align:center">Total Pcs</td>';
-    h += '<td class="c sz" style="width:12%;text-align:right">Amount</td>';
+    h += '<td class="c sz" style="width:3%;text-align:center">#</td>';
+    h += '<td class="c sz" style="width:11%">Code</td>';
+    h += '<td class="c sz" style="width:25%">Product</td>';
+    h += '<td class="c sz" style="width:7%">Size</td>';
+    h += '<td class="c sz" style="width:9%">Unit</td>';
+    h += '<td class="c sz" style="width:9%;text-align:right">Rate/Unit</td>';
+    h += '<td class="c sz" style="width:5%;text-align:center">Qty</td>';
+    h += '<td class="c sz" style="width:6%;text-align:center">Total Pcs</td>';
+    h += '<td class="c sz" style="width:5%;text-align:center">Disc%</td>';
+    h += '<td class="c sz" style="width:11%;text-align:right">Amount</td>';
     h += '<td class="c sz" style="width:3%"></td>';
     h += '</tr>';
 
     var grandTotal = 0;
+    var totalDiscount = 0;
+    var discountByCategory = {}; // { 'CPVC Pipes': { pct: 59.90, amt: 1234 }, ... }
+    var hasPerItemDiscounts = false;
+
     (items || []).forEach(function(it, i) {
       var amt = (it.rate_per_unit || 0) * (it.qty || 0);
       var totalPcs = (it.pcs_per_unit || 1) * (it.qty || 0);
+      var itemDiscPct = it.discount_percent || 0;
+      var itemDiscAmt = itemDiscPct > 0 ? Math.round(amt * itemDiscPct / 100 * 100) / 100 : 0;
       grandTotal += amt;
+      totalDiscount += itemDiscAmt;
+      if (itemDiscPct > 0) {
+        hasPerItemDiscounts = true;
+        var catKey = it.trade_category || 'Other';
+        if (!discountByCategory[catKey]) discountByCategory[catKey] = { pct: itemDiscPct, amt: 0 };
+        discountByCategory[catKey].amt += itemDiscAmt;
+      }
       h += '<tr class="data-row">';
       h += '<td class="c" style="text-align:center">' + (i + 1) + '</td>';
       h += '<td class="c" style="font-family:monospace;font-size:7.5px;text-align:left">' + esc(it.code) + '</td>';
@@ -107,30 +121,41 @@
       h += '<td class="c" style="text-align:right">' + fmtCur(it.rate_per_unit) + '</td>';
       h += '<td class="c filled" style="text-align:center;font-weight:700">' + fmtQty(it) + '</td>';
       h += '<td class="c" style="text-align:center">' + totalPcs.toLocaleString('en-IN') + '</td>';
+      h += '<td class="c" style="text-align:center;font-size:7.5px">' + (itemDiscPct > 0 ? itemDiscPct + '%' : '') + '</td>';
       h += '<td class="c" style="text-align:right">' + fmtCur(amt) + '</td>';
       h += '<td class="c"></td>';
       h += '</tr>';
     });
 
-    // Totals
-    var discPct = order.discount_percent || 0;
-    var discAmt = discPct > 0 ? Math.round(grandTotal * discPct / 100 * 100) / 100 : 0;
-    var netTotal = grandTotal - discAmt;
+    // If no per-item discounts stored, fall back to the order-level averaged discount
+    if (!hasPerItemDiscounts) {
+      var fallbackDiscPct = order.discount_percent || 0;
+      if (fallbackDiscPct > 0) {
+        totalDiscount = Math.round(grandTotal * fallbackDiscPct / 100 * 100) / 100;
+        discountByCategory['Discount'] = { pct: fallbackDiscPct, amt: totalDiscount };
+      }
+    }
+
+    var netTotal = grandTotal - totalDiscount;
 
     h += '<tr style="background:#e8e8e8;font-weight:700">';
-    h += '<td colspan="8" style="text-align:right;padding:4px 6px;font-size:9px">SUBTOTAL</td>';
+    h += '<td colspan="9" style="text-align:right;padding:4px 6px;font-size:9px">SUBTOTAL</td>';
     h += '<td style="text-align:right;padding:4px 6px;font-size:9px">' + fmtCur(grandTotal) + '</td>';
     h += '<td></td></tr>';
 
-    if (discPct > 0) {
+    // Show category-wise discount breakdown
+    var catKeys = Object.keys(discountByCategory);
+    for (var ci = 0; ci < catKeys.length; ci++) {
+      var catName = catKeys[ci];
+      var catDisc = discountByCategory[catName];
       h += '<tr style="background:#e8f5e9;font-weight:600">';
-      h += '<td colspan="8" style="text-align:right;padding:4px 6px;font-size:9px;color:#2e7d32">DISCOUNT (' + discPct + '%)</td>';
-      h += '<td style="text-align:right;padding:4px 6px;font-size:9px;color:#2e7d32">&minus;' + fmtCur(discAmt) + '</td>';
+      h += '<td colspan="9" style="text-align:right;padding:4px 6px;font-size:9px;color:#2e7d32">DISCOUNT: ' + esc(catName) + ' (' + catDisc.pct + '%)</td>';
+      h += '<td style="text-align:right;padding:4px 6px;font-size:9px;color:#2e7d32">&minus;' + fmtCur(catDisc.amt) + '</td>';
       h += '<td></td></tr>';
     }
 
     h += '<tr style="background:#1a237e;color:white;font-weight:700">';
-    h += '<td colspan="8" style="text-align:right;padding:6px;font-size:10px">NET TOTAL</td>';
+    h += '<td colspan="9" style="text-align:right;padding:6px;font-size:10px">NET TOTAL</td>';
     h += '<td style="text-align:right;padding:6px;font-size:10px">' + fmtCur(netTotal) + '</td>';
     h += '<td></td></tr>';
 

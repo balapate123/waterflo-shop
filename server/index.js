@@ -77,6 +77,15 @@ try {
   console.error('Migration error (user_category_discounts):', e.message);
 }
 
+// Migrations: allow_packet, allow_box, allow_piece columns on products
+try { db.exec("ALTER TABLE products ADD COLUMN allow_packet INTEGER DEFAULT 1"); } catch(e) {}
+try { db.exec("ALTER TABLE products ADD COLUMN allow_box INTEGER DEFAULT 1"); } catch(e) {}
+try { db.exec("ALTER TABLE products ADD COLUMN allow_piece INTEGER DEFAULT 0"); } catch(e) {}
+
+// Migrations: add per-item discount tracking columns to order_items
+try { db.exec("ALTER TABLE order_items ADD COLUMN trade_category TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE order_items ADD COLUMN discount_percent REAL DEFAULT 0"); } catch(e) {}
+
 // Migrations: salesman_dealers junction table
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS salesman_dealers (
