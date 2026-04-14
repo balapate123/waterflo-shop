@@ -202,8 +202,18 @@
           <button class="btn-admin-secondary" onclick="addOtherCharge()" style="margin-top:8px">+ Add Charge</button>
         </div>
 
-        <button class="btn-admin-primary" onclick="saveSettings()" style="width:100%;padding:10px;font-size:1rem">Save Settings</button>
+        <button class="btn-admin-primary" onclick="saveSettings()" style="width:100%;padding:10px;font-size:1rem">Save Tax Settings</button>
         <div id="settingsSaveMsg" style="text-align:center;margin-top:8px;color:#2e7d32;font-weight:600;display:none">Settings saved!</div>
+
+        <div class="settings-card" style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-top:24px">
+          <h3 style="margin-bottom:4px;font-size:1rem;color:#1a237e">Default Category Discounts</h3>
+          <p style="color:#666;font-size:0.82rem;margin-bottom:14px">These defaults are applied when assigning discounts to new users. Changes here update the system defaults — existing user discounts are not affected.</p>
+          <div id="defaultDiscountsGrid" style="display:grid;grid-template-columns:1fr;gap:0"></div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn-admin-primary" onclick="saveDefaultDiscounts()" style="flex:1;padding:10px;font-size:1rem">Save Default Discounts</button>
+          </div>
+          <div id="defaultDiscSaveMsg" style="text-align:center;margin-top:8px;color:#2e7d32;font-weight:600;display:none">Default discounts saved!</div>
+        </div>
       </div>
     </section>
 
@@ -303,6 +313,22 @@
             </div>
           </div>
           <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label>Order Unit Options</label>
+              <div style="display:flex;gap:16px;padding:6px 0">
+                <label style="display:flex;align-items:center;gap:4px;font-weight:normal;cursor:pointer">
+                  <input type="checkbox" id="pf_allow_packet" name="allow_packet"> Packet
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-weight:normal;cursor:pointer">
+                  <input type="checkbox" id="pf_allow_box" name="allow_box"> Box
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-weight:normal;cursor:pointer">
+                  <input type="checkbox" id="pf_allow_piece" name="allow_piece"> Single Piece
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
             <div class="form-group">
               <label>Rate 3m (&#x20B9;)</label>
               <input id="pf_rate_3mtr" name="rate_3mtr" type="number" step="0.01">
@@ -327,9 +353,13 @@
               <img id="pf_image_img" src="" alt="Product" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid #ddd">
               <button type="button" onclick="removeProductImage()" style="margin-left:8px;color:#d32f2f;background:none;border:none;cursor:pointer;font-size:0.85rem">Remove</button>
             </div>
-            <input type="file" id="pf_image_file" accept=".jpg,.jpeg,.png,.webp" onchange="previewProductImage(this)">
+            <div class="file-upload-wrap">
+              <input type="file" id="pf_image_file" accept=".jpg,.jpeg,.png,.webp" onchange="previewProductImage(this)">
+              <span class="file-upload-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Image</span>
+              <span class="file-upload-name" id="pf_image_filename">No file chosen</span>
+            </div>
             <input type="hidden" id="pf_image_url" name="image_url">
-            <small style="color:#888">JPG, PNG or WebP, max 2MB</small>
+            <small style="color:#888;margin-top:4px;display:block">JPG, PNG or WebP, max 2MB</small>
           </div>
           <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:8px">Save Product</button>
         </form>
@@ -530,7 +560,7 @@
             </div>
             <div class="form-group">
               <label>Active</label>
-              <select id="be_active" style="width:100%;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit">
+              <select id="be_active">
                 <option value="1">Active</option>
                 <option value="0">Inactive</option>
               </select>
@@ -1742,6 +1772,8 @@
       document.getElementById('pf_image_url').value = '';
       document.getElementById('pf_image_preview').style.display = 'none';
       document.getElementById('pf_image_file').value = '';
+      var fnEl = document.getElementById('pf_image_filename');
+      if (fnEl) fnEl.textContent = 'No file chosen';
       document.getElementById('productModalTitle').textContent = 'Add Product';
 
       if (product) {
@@ -1770,6 +1802,17 @@
         }
       }
 
+      // Set allow_packet/box/piece checkboxes
+      if (product) {
+        document.getElementById('pf_allow_packet').checked = product.allow_packet !== 0;
+        document.getElementById('pf_allow_box').checked = product.allow_box !== 0;
+        document.getElementById('pf_allow_piece').checked = product.allow_piece === 1;
+      } else {
+        document.getElementById('pf_allow_packet').checked = true;
+        document.getElementById('pf_allow_box').checked = true;
+        document.getElementById('pf_allow_piece').checked = false;
+      }
+
       document.getElementById('productModal').classList.add('open');
     }
 
@@ -1787,13 +1830,17 @@
     }
 
     function previewProductImage(input) {
+      var nameEl = document.getElementById('pf_image_filename');
       if (input.files && input.files[0]) {
+        if (nameEl) nameEl.textContent = input.files[0].name;
         var reader = new FileReader();
         reader.onload = function(e) {
           document.getElementById('pf_image_img').src = e.target.result;
           document.getElementById('pf_image_preview').style.display = 'flex';
         };
         reader.readAsDataURL(input.files[0]);
+      } else {
+        if (nameEl) nameEl.textContent = 'No file chosen';
       }
     }
 
@@ -1802,6 +1849,8 @@
       document.getElementById('pf_image_file').value = '';
       document.getElementById('pf_image_preview').style.display = 'none';
       document.getElementById('pf_image_img').src = '';
+      var nameEl = document.getElementById('pf_image_filename');
+      if (nameEl) nameEl.textContent = 'No file chosen';
     }
 
     async function saveProduct(e) {
@@ -1847,7 +1896,10 @@
         rate_5mtr: parseFloat(form.rate_5mtr.value) || null,
         pipe_length: parseFloat(form.pipe_length.value) || null,
         coming_soon: form.coming_soon.checked ? 1 : 0,
-        image_url: imageUrl
+        image_url: imageUrl,
+        allow_packet: document.getElementById('pf_allow_packet').checked ? 1 : 0,
+        allow_box: document.getElementById('pf_allow_box').checked ? 1 : 0,
+        allow_piece: document.getElementById('pf_allow_piece').checked ? 1 : 0
       };
 
       var r;
@@ -1932,6 +1984,7 @@
         document.getElementById('settingsGstPercent').value = data.gst_percent || 18;
         renderOtherCharges(data.other_charges || []);
       }
+      loadDefaultDiscounts();
     }
 
     function renderOtherCharges(charges) {
@@ -1984,6 +2037,54 @@
         setTimeout(function() { msg.style.display = 'none'; }, 2000);
       } else {
         alert('Failed to save settings');
+      }
+    }
+
+    // ─── Default Category Discounts (Settings Tab) ──────────────────────────
+
+    async function loadDefaultDiscounts() {
+      var res = await fetch('/api/admin/settings/default-discounts');
+      if (!res.ok) return;
+      var data = await res.json();
+      var discounts = data.discounts || [];
+      renderDefaultDiscountsGrid(discounts);
+      // Also update the in-memory defaults so user discount grid uses current values
+      DEFAULT_CATEGORY_DISCOUNTS = discounts.map(function(d) {
+        return { category: d.category, discount_percent: d.discount_percent };
+      });
+    }
+
+    function renderDefaultDiscountsGrid(discounts) {
+      var grid = document.getElementById('defaultDiscountsGrid');
+      if (!grid) return;
+      grid.innerHTML = discounts.map(function(d, i) {
+        var bg = i % 2 === 0 ? '#fafafa' : '#fff';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:' + bg + ';border-bottom:1px solid #eee">'
+          + '<span style="flex:1;font-size:0.88rem;font-weight:600;color:#333">' + escapeHtml(d.category) + '</span>'
+          + '<input type="number" step="0.01" min="0" max="100" value="' + (d.discount_percent || 0) + '" data-cat="' + escapeHtml(d.category) + '" class="default-disc-input" style="width:90px;padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.9rem;text-align:right">'
+          + '<span style="font-size:0.85rem;color:#666">%</span>'
+          + '</div>';
+      }).join('');
+    }
+
+    async function saveDefaultDiscounts() {
+      var inputs = document.querySelectorAll('.default-disc-input');
+      var discounts = [];
+      inputs.forEach(function(inp) {
+        discounts.push({
+          category: inp.dataset.cat,
+          discount_percent: parseFloat(inp.value) || 0
+        });
+      });
+      var res = await apiPut('/api/admin/settings/default-discounts', { discounts: discounts });
+      if (res.ok) {
+        var msg = document.getElementById('defaultDiscSaveMsg');
+        msg.style.display = 'block';
+        setTimeout(function() { msg.style.display = 'none'; }, 2000);
+        // Update in-memory defaults
+        DEFAULT_CATEGORY_DISCOUNTS = discounts;
+      } else {
+        alert('Failed to save default discounts');
       }
     }
 

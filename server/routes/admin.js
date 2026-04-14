@@ -349,8 +349,8 @@ router.put('/users/:id/dealers', (req, res) => {
 
 // ─── CATEGORY DISCOUNTS ──────────────────────────────────────────────────────
 
-// Default trade discounts (from Godavari Trade Discount Revision 10-03-2026)
-const DEFAULT_CATEGORY_DISCOUNTS = [
+// Hardcoded fallback trade discounts (used only if nothing is saved in DB yet)
+const HARDCODED_CATEGORY_DISCOUNTS = [
   { category: 'CPVC Pipes',          discount_percent: 59.90 },
   { category: 'CPVC Fittings',       discount_percent: 55.90 },
   { category: 'CPVC Brass Fittings', discount_percent: 50.40 },
@@ -370,6 +370,18 @@ const DEFAULT_CATEGORY_DISCOUNTS = [
   { category: 'PVC / SWR Solvent',   discount_percent: 47.60 },
 ];
 
+// Read defaults from DB settings, falling back to hardcoded values
+function getDefaultCategoryDiscounts(db) {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'default_category_discounts'").get();
+  if (row) {
+    try {
+      const parsed = JSON.parse(row.value);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) { /* fall through to hardcoded */ }
+  }
+  return HARDCODED_CATEGORY_DISCOUNTS;
+}
+
 // GET /api/admin/users/:id/discounts — get per-category discounts for a user
 router.get('/users/:id/discounts', (req, res) => {
   const db = req.app.get('db');
@@ -383,13 +395,14 @@ router.get('/users/:id/discounts', (req, res) => {
   for (const s of saved) savedMap[s.category] = s.discount_percent;
 
   // Merge defaults with user-specific overrides
-  const discounts = DEFAULT_CATEGORY_DISCOUNTS.map(d => ({
+  const defaults = getDefaultCategoryDiscounts(db);
+  const discounts = defaults.map(d => ({
     category: d.category,
     default_percent: d.discount_percent,
     discount_percent: savedMap[d.category] !== undefined ? savedMap[d.category] : d.discount_percent
   }));
 
-  res.json({ discounts, defaults: DEFAULT_CATEGORY_DISCOUNTS });
+  res.json({ discounts, defaults });
 });
 
 // PUT /api/admin/users/:id/discounts — save per-category discounts for a user
@@ -559,26 +572,48 @@ router.put('/orders/:id/edit', (req, res) => {
     }
   }
 
-  // Calculate new totals
+  // Fetch the user's category discounts for accurate recalculation
+  const categoryDiscRows = db.prepare(
+    'SELECT category, discount_percent FROM user_category_discounts WHERE user_id = ?'
+  ).all(order.user_id);
+  const categoryDiscMap = {};
+  for (const d of categoryDiscRows) categoryDiscMap[d.category] = d.discount_percent;
+  const hasCategoryDiscounts = Object.keys(categoryDiscMap).length > 0;
+
+  // Calculate new totals with per-category discounts
   let totalAmount = 0;
+  let totalDiscount = 0;
   for (const item of items) {
-    totalAmount += (item.rate_per_unit || 0) * (item.qty || 0);
+    const lineTotal = (item.rate_per_unit || 0) * (item.qty || 0);
+    totalAmount += lineTotal;
+    if (hasCategoryDiscounts) {
+      const tradeCategory = item.trade_category || null;
+      const discPct = (tradeCategory && categoryDiscMap[tradeCategory] !== undefined)
+        ? categoryDiscMap[tradeCategory] : 0;
+      totalDiscount += discPct > 0 ? Math.round(lineTotal * discPct / 100 * 100) / 100 : 0;
+    }
   }
-  const discPct = order.discount_percent || 0;
-  const discountAmt = discPct > 0 ? Math.round(totalAmount * discPct / 100 * 100) / 100 : 0;
-  const netAmount = totalAmount - discountAmt;
+  if (!hasCategoryDiscounts) {
+    const userDiscPct = order.discount_percent || 0;
+    totalDiscount = userDiscPct > 0 ? Math.round(totalAmount * userDiscPct / 100 * 100) / 100 : 0;
+  }
+  const netAmount = totalAmount - totalDiscount;
+  const effectiveDiscPct = totalAmount > 0 ? Math.round(totalDiscount / totalAmount * 10000) / 100 : 0;
 
   try {
     const editOrder = db.transaction(() => {
       // Delete existing items
       db.prepare('DELETE FROM order_items WHERE order_id = ?').run(orderId);
 
-      // Insert updated items
+      // Insert updated items with per-item discount tracking
       const insertItem = db.prepare(`
-        INSERT INTO order_items (order_id, product_id, code, name, size, unit_type, unit_label, pcs_per_unit, rate_per_unit, qty)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO order_items (order_id, product_id, code, name, size, unit_type, unit_label, pcs_per_unit, rate_per_unit, qty, trade_category, discount_percent)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const item of items) {
+        const tradeCategory = item.trade_category || null;
+        const itemDiscPct = (hasCategoryDiscounts && tradeCategory && categoryDiscMap[tradeCategory] !== undefined)
+          ? categoryDiscMap[tradeCategory] : 0;
         insertItem.run(
           orderId,
           item.product_id || null,
@@ -589,18 +624,20 @@ router.put('/orders/:id/edit', (req, res) => {
           item.unit_label || '',
           item.pcs_per_unit,
           item.rate_per_unit,
-          item.qty
+          item.qty,
+          tradeCategory,
+          itemDiscPct
         );
       }
 
       // Update order totals and notes
       db.prepare(`
-        UPDATE orders SET total_amount = ?, net_amount = ?, notes = ? WHERE id = ?
-      `).run(totalAmount, netAmount, notes !== undefined ? notes : order.notes, orderId);
+        UPDATE orders SET total_amount = ?, discount_percent = ?, net_amount = ?, notes = ? WHERE id = ?
+      `).run(totalAmount, effectiveDiscPct, netAmount, notes !== undefined ? notes : order.notes, orderId);
     });
 
     editOrder();
-    res.json({ message: 'Order updated', total_amount: totalAmount, net_amount: netAmount });
+    res.json({ message: 'Order updated', total_amount: totalAmount, discount_percent: effectiveDiscPct, net_amount: netAmount });
   } catch (err) {
     console.error('Order edit error:', err);
     res.status(500).json({ error: 'Failed to update order' });
@@ -657,14 +694,17 @@ router.post('/products', (req, res) => {
   if (existing) return res.status(409).json({ error: 'Product code already exists for this brand' });
 
   const result = db.prepare(`
-    INSERT INTO products (brand_id, code, name, category, subcategory, size, size_mm, standard, rate, unit, std_pkg, qty_box, qty_bundle, rate_3mtr, rate_5mtr, pipe_length, qty_per_length, coming_soon, image_url, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO products (brand_id, code, name, category, subcategory, size, size_mm, standard, rate, unit, std_pkg, qty_box, qty_bundle, rate_3mtr, rate_5mtr, pipe_length, qty_per_length, coming_soon, image_url, active, allow_packet, allow_box, allow_piece)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
   `).run(
     p.brand_id, p.code, p.name, p.category, p.subcategory, p.size,
     p.size_mm || 0, p.standard || null, p.rate || 0, p.unit || 'pcs',
     p.std_pkg || 0, p.qty_box || 0, p.qty_bundle || 0,
     p.rate_3mtr || null, p.rate_5mtr || null, p.pipe_length || null,
-    p.qty_per_length || null, p.coming_soon ? 1 : 0, p.image_url || null
+    p.qty_per_length || null, p.coming_soon ? 1 : 0, p.image_url || null,
+    p.allow_packet !== undefined ? p.allow_packet : 1,
+    p.allow_box !== undefined ? p.allow_box : 1,
+    p.allow_piece !== undefined ? p.allow_piece : 0
   );
 
   res.status(201).json({ message: 'Product created', id: result.lastInsertRowid });
@@ -686,7 +726,8 @@ router.put('/products/:id', (req, res) => {
 
   const fields = ['code', 'name', 'category', 'subcategory', 'size', 'size_mm', 'standard',
     'rate', 'unit', 'std_pkg', 'qty_box', 'qty_bundle', 'rate_3mtr', 'rate_5mtr',
-    'pipe_length', 'qty_per_length', 'coming_soon', 'active', 'image_url'];
+    'pipe_length', 'qty_per_length', 'coming_soon', 'active', 'image_url',
+    'allow_packet', 'allow_box', 'allow_piece'];
 
   const updates = [];
   const params = [];
@@ -791,6 +832,45 @@ router.put('/brands/:id', (req, res) => {
 
   const updated = db.prepare('SELECT * FROM brands WHERE id = ?').get(brandId);
   res.json({ brand: updated });
+});
+
+// ─── DEFAULT CATEGORY DISCOUNTS SETTINGS ─────────────────────────────────────
+
+// GET /api/admin/settings/default-discounts — get editable default discounts
+router.get('/settings/default-discounts', (req, res) => {
+  const db = req.app.get('db');
+  const discounts = getDefaultCategoryDiscounts(db);
+  res.json({ discounts });
+});
+
+// PUT /api/admin/settings/default-discounts — save default discounts
+router.put('/settings/default-discounts', (req, res) => {
+  const db = req.app.get('db');
+  const { discounts } = req.body;
+
+  if (!Array.isArray(discounts) || discounts.length === 0) {
+    return res.status(400).json({ error: 'discounts must be a non-empty array' });
+  }
+
+  for (const d of discounts) {
+    if (!d.category || typeof d.category !== 'string') {
+      return res.status(400).json({ error: 'Each discount must have a category string' });
+    }
+    if (typeof d.discount_percent !== 'number' || d.discount_percent < 0 || d.discount_percent > 100) {
+      return res.status(400).json({ error: `discount_percent must be between 0 and 100 for "${d.category}"` });
+    }
+  }
+
+  try {
+    db.prepare(`
+      INSERT INTO settings (key, value, updated_at) VALUES ('default_category_discounts', ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+    `).run(JSON.stringify(discounts));
+    res.json({ message: 'Default discounts saved', count: discounts.length });
+  } catch (err) {
+    console.error('Default discounts save error:', err);
+    res.status(500).json({ error: 'Failed to save default discounts' });
+  }
 });
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
