@@ -2,6 +2,27 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 
+function auditEvent(req, action, entityType, entityId, details, userFallback) {
+  try {
+    const db = req.app.get('db');
+    const user = req.user || userFallback || null;
+    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
+    db.prepare(`
+      INSERT INTO audit_log (user_id, user_email, user_role, action, entity_type, entity_id, details, ip_address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      user ? user.id : null,
+      user ? user.email : null,
+      user ? user.role : null,
+      action,
+      entityType || null,
+      entityId == null ? null : String(entityId),
+      details ? JSON.stringify(details) : null,
+      ip || null
+    );
+  } catch (e) { /* non-fatal */ }
+}
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   const { email, password, company_name, contact_name, phone, address } = req.body;
@@ -35,6 +56,7 @@ router.post('/register', async (req, res) => {
       insertBrand.run(result.lastInsertRowid, b.id);
     }
 
+    auditEvent(req, 'auth.register', 'user', result.lastInsertRowid, { email: email.toLowerCase().trim(), company_name: company_name.trim() });
     res.status(201).json({
       message: 'Registration successful. Your account is pending approval.',
       userId: result.lastInsertRowid
@@ -59,11 +81,13 @@ router.post('/login', async (req, res) => {
   if (!user) {
     // Dummy bcrypt compare to prevent timing-based user enumeration
     await bcrypt.compare(password, '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012');
+    auditEvent(req, 'auth.login_fail', 'user', null, { email: email.toLowerCase().trim(), reason: 'unknown_email' });
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) {
+    auditEvent(req, 'auth.login_fail', 'user', user.id, { email: user.email, reason: 'bad_password' }, user);
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
@@ -76,6 +100,7 @@ router.post('/login', async (req, res) => {
   }
 
   req.session.userId = user.id;
+  auditEvent(req, 'auth.login', 'user', user.id, { email: user.email, role: user.role }, user);
   req.session.save(() => {
     res.json({
       user: {
@@ -93,6 +118,14 @@ router.post('/login', async (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
+  const db = req.app.get('db');
+  let sessionUser = null;
+  if (req.session && req.session.userId) {
+    try {
+      sessionUser = db.prepare('SELECT id, email, role FROM users WHERE id = ?').get(req.session.userId);
+    } catch (e) { /* ignore */ }
+  }
+  if (sessionUser) auditEvent(req, 'auth.logout', 'user', sessionUser.id, { email: sessionUser.email }, sessionUser);
   req.session.destroy(() => {
     res.json({ message: 'Logged out' });
   });

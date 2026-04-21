@@ -134,6 +134,29 @@ try {
   console.error('Migration error (settings):', e.message);
 }
 
+// Migrations: audit_log table for admin activity tracking
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    user_email TEXT,
+    user_role TEXT,
+    action TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id TEXT,
+    details TEXT,
+    ip_address TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id)");
+  console.log('Migration: audit_log table ensured');
+} catch (e) {
+  console.error('Migration error (audit_log):', e.message);
+}
+
 app.set('db', db);
 
 // ─── Security Headers (helmet) ─────────────────────────────────────────────────
