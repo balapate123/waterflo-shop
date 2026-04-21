@@ -2,7 +2,9 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const vm = require('vm');
 const { requireAdmin } = require('../middleware/auth');
+const { logAudit, diffFields } = require('../audit');
 const router = express.Router();
 
 // Image upload config
@@ -190,8 +192,12 @@ router.put('/users/:id', (req, res) => {
 
   if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
 
+  const before = db.prepare('SELECT status, discount_percent, role, company_name, contact_name, phone, email, address FROM users WHERE id = ?').get(userId);
   params.push(userId);
   db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+  const patch = { status, discount_percent, role, company_name, contact_name, phone, email, address };
+  logAudit(req, 'user.update', 'user', userId, { changes: diffFields(before, patch) });
 
   res.json({ message: 'User updated' });
 });
@@ -249,7 +255,7 @@ router.delete('/users/:id', (req, res) => {
   const db = req.app.get('db');
   const userId = req.params.id;
 
-  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId);
+  const user = db.prepare('SELECT id, email, company_name, role FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.role === 'admin') return res.status(400).json({ error: 'Cannot delete admin users' });
 
@@ -267,6 +273,7 @@ router.delete('/users/:id', (req, res) => {
   });
 
   deleteUser();
+  logAudit(req, 'user.delete', 'user', userId, { email: user.email, company_name: user.company_name, role: user.role });
   res.json({ message: 'User deleted' });
 });
 
@@ -277,6 +284,7 @@ router.put('/users/:id/brands', (req, res) => {
 
   if (!Array.isArray(brand_ids)) return res.status(400).json({ error: 'brand_ids must be an array' });
 
+  const beforeBrands = db.prepare('SELECT brand_id FROM user_brands WHERE user_id = ?').all(userId).map(r => r.brand_id);
   db.prepare('DELETE FROM user_brands WHERE user_id = ?').run(userId);
 
   const insert = db.prepare('INSERT INTO user_brands (user_id, brand_id) VALUES (?, ?)');
@@ -287,6 +295,7 @@ router.put('/users/:id/brands', (req, res) => {
   });
   insertAll(brand_ids);
 
+  logAudit(req, 'user.brands_update', 'user', userId, { before: beforeBrands, after: brand_ids });
   res.json({ message: 'Brand access updated' });
 });
 
@@ -334,6 +343,7 @@ router.put('/users/:id/dealers', (req, res) => {
   const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
+  const beforeDealers = db.prepare('SELECT dealer_id FROM salesman_dealers WHERE salesman_id = ?').all(userId).map(r => r.dealer_id);
   db.prepare('DELETE FROM salesman_dealers WHERE salesman_id = ?').run(userId);
 
   const insert = db.prepare('INSERT INTO salesman_dealers (salesman_id, dealer_id) VALUES (?, ?)');
@@ -344,6 +354,7 @@ router.put('/users/:id/dealers', (req, res) => {
   });
   insertAll(dealer_ids);
 
+  logAudit(req, 'user.dealers_update', 'user', userId, { before: beforeDealers, after: dealer_ids });
   res.json({ message: 'Dealer links updated' });
 });
 
@@ -440,6 +451,7 @@ router.put('/users/:id/discounts', (req, res) => {
   });
 
   saveAll(discounts);
+  logAudit(req, 'user.discounts_update', 'user', userId, { count: discounts.length, discounts });
   res.json({ message: 'Category discounts updated', count: discounts.length });
 });
 
@@ -537,9 +549,11 @@ router.put('/orders/:id', (req, res) => {
   const validStatuses = ['pending', 'confirmed', 'dispatched', 'delivered', 'cancelled'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
+  const before = db.prepare('SELECT status, order_no FROM orders WHERE id = ?').get(req.params.id);
   const result = db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Order not found' });
 
+  logAudit(req, 'order.status_change', 'order', req.params.id, { order_no: before && before.order_no, from: before && before.status, to: status });
   res.json({ message: 'Order status updated' });
 });
 
@@ -637,6 +651,7 @@ router.put('/orders/:id/edit', (req, res) => {
     });
 
     editOrder();
+    logAudit(req, 'order.edit', 'order', orderId, { order_no: order.order_no, item_count: items.length, total_amount: totalAmount, net_amount: netAmount });
     res.json({ message: 'Order updated', total_amount: totalAmount, discount_percent: effectiveDiscPct, net_amount: netAmount });
   } catch (err) {
     console.error('Order edit error:', err);
@@ -707,6 +722,7 @@ router.post('/products', (req, res) => {
     p.allow_piece !== undefined ? p.allow_piece : 0
   );
 
+  logAudit(req, 'product.create', 'product', result.lastInsertRowid, { brand_id: p.brand_id, code: p.code, name: p.name, rate: p.rate });
   res.status(201).json({ message: 'Product created', id: result.lastInsertRowid });
 });
 
@@ -715,7 +731,7 @@ router.put('/products/:id', (req, res) => {
   const p = req.body;
   const productId = req.params.id;
 
-  const existing = db.prepare('SELECT id, brand_id FROM products WHERE id = ?').get(productId);
+  const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
   if (!existing) return res.status(404).json({ error: 'Product not found' });
 
   // Check for duplicate code within brand (exclude own ID)
@@ -731,11 +747,13 @@ router.put('/products/:id', (req, res) => {
 
   const updates = [];
   const params = [];
+  const patch = {};
 
   for (const f of fields) {
     if (p[f] !== undefined) {
       updates.push(`${f} = ?`);
       params.push(p[f]);
+      patch[f] = p[f];
     }
   }
 
@@ -744,14 +762,29 @@ router.put('/products/:id', (req, res) => {
   params.push(productId);
   db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
+  const wasDeactivated = patch.active === 0 && existing.active === 1;
+  const wasReactivated = patch.active === 1 && existing.active === 0;
+  const action = wasDeactivated ? 'product.deactivate' : wasReactivated ? 'product.reactivate' : 'product.update';
+  logAudit(req, action, 'product', productId, {
+    brand_id: existing.brand_id, code: existing.code, name: existing.name,
+    changes: diffFields(existing, patch)
+  });
+
   res.json({ message: 'Product updated' });
 });
 
 router.delete('/products/:id', (req, res) => {
   const db = req.app.get('db');
+  const existing = db.prepare('SELECT id, brand_id, code, name, active FROM products WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Product not found' });
+
   // Soft delete — set active = 0
   const result = db.prepare('UPDATE products SET active = 0 WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Product not found' });
+
+  logAudit(req, 'product.deactivate', 'product', req.params.id, {
+    brand_id: existing.brand_id, code: existing.code, name: existing.name, was_active: existing.active === 1
+  });
   res.json({ message: 'Product deactivated' });
 });
 
@@ -787,7 +820,126 @@ router.post('/products/bulk-price', (req, res) => {
   }
 
   const result = db.prepare(query).run(...params);
+  logAudit(req, 'product.bulk_price', 'brand', brand_id, {
+    brand_id, category: category || 'all', percent_change, affected: result.changes
+  });
   res.json({ message: `Updated ${result.changes} products by ${percent_change}%` });
+});
+
+// ─── PRODUCT SYNC ────────────────────────────────────────────────────────────
+// Reads brand data files (js/brand-config.js + js/brands/*.js) and inserts
+// products missing from the DB. Never deletes, never overwrites existing rows
+// (uses INSERT OR IGNORE on the UNIQUE(brand_id, code) constraint).
+// POST /api/admin/products/sync  body: { dry_run: boolean }
+
+function loadBrandsFromFiles() {
+  const PROJECT_ROOT = path.join(__dirname, '..', '..');
+  const brandConfigPath = path.join(PROJECT_ROOT, 'js', 'brand-config.js');
+  const brandConfigCode = fs.readFileSync(brandConfigPath, 'utf8');
+
+  const wrappedConfig = brandConfigCode + '\n; __BRANDS__ = BRANDS;';
+  const configContext = {
+    __BRANDS__: null,
+    URLSearchParams: class { constructor() {} get() { return null; } },
+    window: { location: { search: '' } },
+    console: console
+  };
+  vm.createContext(configContext);
+  vm.runInContext(wrappedConfig, configContext);
+
+  const BRANDS = configContext.__BRANDS__ || [];
+  const out = [];
+  for (const b of BRANDS) {
+    const dataFilePath = path.join(PROJECT_ROOT, b.dataFile);
+    if (!fs.existsSync(dataFilePath)) {
+      out.push({ id: b.id, name: b.name, products: [], error: 'data file not found' });
+      continue;
+    }
+    const dataCode = fs.readFileSync(dataFilePath, 'utf8');
+    const dataContext = { PRODUCTS: null, document: { dispatchEvent() {} }, Event: class {} };
+    vm.createContext(dataContext);
+    try {
+      vm.runInContext(dataCode, dataContext);
+      out.push({ id: b.id, name: b.name, products: dataContext.PRODUCTS || [] });
+    } catch (e) {
+      out.push({ id: b.id, name: b.name, products: [], error: e.message });
+    }
+  }
+  return out;
+}
+
+router.post('/products/sync', (req, res) => {
+  const db = req.app.get('db');
+  const dryRun = !!req.body.dry_run;
+
+  let brandsData;
+  try {
+    brandsData = loadBrandsFromFiles();
+  } catch (e) {
+    console.error('Sync: failed to read brand files:', e);
+    return res.status(500).json({ error: 'Failed to read brand data files: ' + e.message });
+  }
+
+  const summary = [];
+  let totalToAdd = 0;
+  let totalInserted = 0;
+
+  const insertProduct = db.prepare(`
+    INSERT OR IGNORE INTO products
+      (brand_id, code, name, category, subcategory, size, size_mm, standard, rate, unit, std_pkg, qty_box, qty_bundle, rate_3mtr, rate_5mtr, pipe_length, qty_per_length, coming_soon)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const runInsertBatch = db.transaction((brandId, missingList) => {
+    let inserted = 0;
+    for (const p of missingList) {
+      const result = insertProduct.run(
+        brandId,
+        p.code, p.name, p.category || '', p.subcategory || '', p.size || '',
+        p.size_mm || 0, p.standard || null, p.rate || 0, p.unit || 'pcs',
+        p.ib || p.std_pkg || 0, p.qty_box || 0, p.qty_bundle || 0,
+        p.rate_3mtr || null, p.rate_5mtr || null, p.pipe_length || null,
+        p.qty_per_length || null, p.comingSoon ? 1 : 0
+      );
+      if (result.changes > 0) inserted++;
+    }
+    return inserted;
+  });
+
+  for (const b of brandsData) {
+    if (b.error) {
+      summary.push({ brand_id: b.id, brand_name: b.name, error: b.error, to_add: 0, existing_in_db: 0, total_in_file: 0 });
+      continue;
+    }
+    const existingRows = db.prepare('SELECT code FROM products WHERE brand_id = ?').all(b.id);
+    const existingCodes = new Set(existingRows.map(r => r.code));
+    const missing = b.products.filter(p => p && p.code && !existingCodes.has(p.code));
+    const sampleCodes = missing.slice(0, 5).map(p => p.code);
+
+    let inserted = 0;
+    if (!dryRun && missing.length > 0) {
+      inserted = runInsertBatch(b.id, missing);
+    }
+
+    summary.push({
+      brand_id: b.id,
+      brand_name: b.name,
+      total_in_file: b.products.length,
+      existing_in_db: existingRows.length,
+      to_add: missing.length,
+      inserted: dryRun ? 0 : inserted,
+      sample_codes: sampleCodes
+    });
+    totalToAdd += missing.length;
+    totalInserted += inserted;
+  }
+
+  logAudit(req, dryRun ? 'products.sync_preview' : 'products.sync_run', 'products', null, {
+    dry_run: dryRun, total_to_add: totalToAdd, total_inserted: totalInserted,
+    per_brand: summary.map(s => ({ brand_id: s.brand_id, to_add: s.to_add, inserted: s.inserted }))
+  });
+
+  res.json({ dry_run: dryRun, total_to_add: totalToAdd, total_inserted: totalInserted, summary });
 });
 
 // ─── BRAND MANAGEMENT ────────────────────────────────────────────────────────
@@ -811,17 +963,19 @@ router.put('/brands/:id', (req, res) => {
   const brandId = req.params.id;
   const b = req.body;
 
-  const existing = db.prepare('SELECT id FROM brands WHERE id = ?').get(brandId);
+  const existing = db.prepare('SELECT * FROM brands WHERE id = ?').get(brandId);
   if (!existing) return res.status(404).json({ error: 'Brand not found' });
 
   const fields = ['logo_url', 'banner_url', 'tagline', 'color', 'active'];
   const updates = [];
   const params = [];
+  const patch = {};
 
   for (const f of fields) {
     if (b[f] !== undefined) {
       updates.push(`${f} = ?`);
       params.push(b[f]);
+      patch[f] = b[f];
     }
   }
 
@@ -831,6 +985,7 @@ router.put('/brands/:id', (req, res) => {
   db.prepare(`UPDATE brands SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
   const updated = db.prepare('SELECT * FROM brands WHERE id = ?').get(brandId);
+  logAudit(req, 'brand.update', 'brand', brandId, { name: existing.name, changes: diffFields(existing, patch) });
   res.json({ brand: updated });
 });
 
@@ -866,6 +1021,7 @@ router.put('/settings/default-discounts', (req, res) => {
       INSERT INTO settings (key, value, updated_at) VALUES ('default_category_discounts', ?, datetime('now'))
       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
     `).run(JSON.stringify(discounts));
+    logAudit(req, 'settings.default_discounts_update', 'settings', 'default_category_discounts', { count: discounts.length, discounts });
     res.json({ message: 'Default discounts saved', count: discounts.length });
   } catch (err) {
     console.error('Default discounts save error:', err);
@@ -908,11 +1064,55 @@ router.put('/settings', (req, res) => {
 
   try {
     saveAll();
+    logAudit(req, 'settings.update', 'settings', 'tax_charges', { gst_percent, other_charges });
     res.json({ message: 'Settings saved' });
   } catch (err) {
     console.error('Settings save error:', err);
     res.status(500).json({ error: 'Failed to save settings' });
   }
+});
+
+// ─── AUDIT LOG ───────────────────────────────────────────────────────────────
+// GET /api/admin/audit-log?action=&entity_type=&user_id=&search=&date_from=&date_to=&page=&per_page=
+router.get('/audit-log', (req, res) => {
+  const db = req.app.get('db');
+  const { action, entity_type, user_id, search, date_from, date_to } = req.query;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const perPage = Math.min(200, Math.max(1, parseInt(req.query.per_page, 10) || 50));
+  const offset = (page - 1) * perPage;
+
+  let where = 'WHERE 1=1';
+  const params = [];
+  if (action) { where += ' AND action = ?'; params.push(action); }
+  if (entity_type) { where += ' AND entity_type = ?'; params.push(entity_type); }
+  if (user_id) { where += ' AND user_id = ?'; params.push(user_id); }
+  if (date_from) { where += ' AND date(created_at) >= ?'; params.push(date_from); }
+  if (date_to) { where += ' AND date(created_at) <= ?'; params.push(date_to); }
+  if (search) {
+    where += ' AND (user_email LIKE ? OR entity_id LIKE ? OR details LIKE ? OR action LIKE ?)';
+    const s = `%${search}%`;
+    params.push(s, s, s, s);
+  }
+
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM audit_log ${where}`).get(...params).c;
+  const rows = db.prepare(`
+    SELECT id, user_id, user_email, user_role, action, entity_type, entity_id, details, ip_address, created_at
+    FROM audit_log ${where}
+    ORDER BY id DESC
+    LIMIT ? OFFSET ?
+  `).all(...params, perPage, offset);
+
+  // Parse details JSON for clients
+  for (const r of rows) {
+    if (r.details) {
+      try { r.details = JSON.parse(r.details); } catch (e) { /* leave as string */ }
+    }
+  }
+
+  // Distinct actions for filter dropdown
+  const actions = db.prepare('SELECT DISTINCT action FROM audit_log ORDER BY action').all().map(r => r.action);
+
+  res.json({ total, page, per_page: perPage, rows, actions });
 });
 
 module.exports = router;

@@ -33,6 +33,7 @@
     <button class="admin-tab" data-tab="orders" onclick="switchTab('orders')">Orders</button>
     <button class="admin-tab" data-tab="products" onclick="switchTab('products')">Products</button>
     <button class="admin-tab" data-tab="brands" onclick="switchTab('brands')">Brands</button>
+    <button class="admin-tab" data-tab="activity" onclick="switchTab('activity')">Activity</button>
     <button class="admin-tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
   </nav>
 
@@ -145,6 +146,7 @@
           <input type="search" id="prodSearch" placeholder="Search..." onchange="loadProducts()" class="toolbar-search">
           <button class="btn-admin-primary" onclick="openProductModal()">+ Add Product</button>
           <button class="btn-admin-secondary" onclick="openBulkPriceModal()">% Bulk Price</button>
+          <button class="btn-admin-secondary" onclick="openSyncProductsModal()" title="Add products from data files that are missing in the database">Sync Products</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -177,6 +179,54 @@
         <p style="color:var(--text-secondary);font-size:0.82rem">Upload logos, banners, and customize brand appearance</p>
       </div>
       <div class="brand-mgmt-grid" id="brandMgmtGrid"></div>
+    </section>
+
+    <!-- ═══ ACTIVITY TAB ═══ -->
+    <section class="tab-panel" id="panel-activity">
+      <div class="panel-toolbar">
+        <h2>Activity Log</h2>
+        <div class="toolbar-actions">
+          <select id="auditActionFilter" onchange="loadAuditLog(1)">
+            <option value="">All Actions</option>
+          </select>
+          <select id="auditEntityFilter" onchange="loadAuditLog(1)">
+            <option value="">All Entities</option>
+            <option value="product">Product</option>
+            <option value="products">Products (bulk)</option>
+            <option value="user">User</option>
+            <option value="order">Order</option>
+            <option value="brand">Brand</option>
+            <option value="settings">Settings</option>
+          </select>
+          <input type="date" id="auditDateFrom" onchange="loadAuditLog(1)" title="From date">
+          <input type="date" id="auditDateTo" onchange="loadAuditLog(1)" title="To date">
+          <input type="search" id="auditSearch" placeholder="Search user, entity, details..." onchange="loadAuditLog(1)" class="toolbar-search">
+          <button class="btn-admin-secondary" onclick="loadAuditLog(1)">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width:150px">Time</th>
+              <th style="width:180px">User</th>
+              <th style="width:180px">Action</th>
+              <th>Entity</th>
+              <th>Details</th>
+              <th style="width:110px">IP</th>
+            </tr>
+          </thead>
+          <tbody id="auditBody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <span id="auditCount">0 events</span>
+        <div>
+          <button class="btn-admin-secondary" onclick="auditPageChange(-1)" id="auditPrevBtn">Prev</button>
+          <span id="auditPageLabel" style="margin:0 10px">Page 1</span>
+          <button class="btn-admin-secondary" onclick="auditPageChange(1)" id="auditNextBtn">Next</button>
+        </div>
+      </div>
     </section>
 
     <!-- ═══ SETTINGS TAB ═══ -->
@@ -397,6 +447,30 @@
           </div>
           <button type="submit" class="btn-admin-primary" style="width:100%;margin-top:8px">Apply Price Change</button>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SYNC PRODUCTS MODAL ═══ -->
+  <div class="modal" id="syncProductsModal">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2>Sync Products from Data Files</h2>
+        <button onclick="closeModal('syncProductsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#555;font-size:0.85rem;margin-bottom:14px">
+          Reads <code>js/brand-config.js</code> and each brand's data file, then <strong>inserts only products missing from the database</strong>.
+          Existing products are never modified or deleted. Safe to run anytime &mdash; especially useful after deploying a new brand file to Render.
+        </p>
+        <div id="syncPreview" style="margin-bottom:14px">
+          <div style="padding:20px;text-align:center;color:#888">Loading preview&hellip;</div>
+        </div>
+        <div id="syncActions" style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn-admin-secondary" onclick="closeModal('syncProductsModal')">Cancel</button>
+          <button class="btn-admin-primary" id="syncConfirmBtn" onclick="runProductSync()" disabled>Insert Missing Products</button>
+        </div>
+        <div id="syncResultMsg" style="text-align:center;margin-top:12px;font-weight:600;display:none"></div>
       </div>
     </div>
   </div>
@@ -646,6 +720,7 @@
       if (tab === 'orders') loadOrders();
       if (tab === 'products') loadProducts();
       if (tab === 'brands') loadBrandsMgmt();
+      if (tab === 'activity') loadAuditLog(1);
       if (tab === 'settings') loadSettings();
     }
 
@@ -2222,6 +2297,226 @@
         loadBrandsMgmt();
       } else {
         alert(r.data.error || 'Error saving brand');
+      }
+    }
+
+    // ═══ SYNC PRODUCTS ═══
+    var syncPreviewData = null;
+
+    async function openSyncProductsModal() {
+      openModal('syncProductsModal');
+      document.getElementById('syncPreview').innerHTML = '<div style="padding:20px;text-align:center;color:#888">Loading preview&hellip;</div>';
+      document.getElementById('syncConfirmBtn').disabled = true;
+      document.getElementById('syncResultMsg').style.display = 'none';
+
+      var r = await apiPost('/api/admin/products/sync', { dry_run: true });
+      if (!r.ok) {
+        document.getElementById('syncPreview').innerHTML = '<div style="color:#c62828;padding:14px">Error: ' + escapeHtml(r.data.error || 'Failed to preview sync') + '</div>';
+        return;
+      }
+      syncPreviewData = r.data;
+      renderSyncPreview(r.data);
+      document.getElementById('syncConfirmBtn').disabled = r.data.total_to_add === 0;
+    }
+
+    function renderSyncPreview(data) {
+      var rows = data.summary.map(function(s) {
+        var badge = s.error
+          ? '<span style="color:#c62828;font-size:0.78rem">' + escapeHtml(s.error) + '</span>'
+          : (s.to_add > 0
+              ? '<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:10px;font-size:0.78rem;font-weight:600">+' + s.to_add + ' to add</span>'
+              : '<span style="color:#4caf50;font-size:0.78rem">up to date</span>');
+        var sample = s.sample_codes && s.sample_codes.length
+          ? '<div style="color:#888;font-size:0.75rem;margin-top:2px">e.g. ' + s.sample_codes.map(escapeHtml).join(', ') + (s.to_add > 5 ? ', &hellip;' : '') + '</div>'
+          : '';
+        return '<tr>'
+          + '<td style="padding:8px 10px;font-weight:600">' + escapeHtml(s.brand_name) + '</td>'
+          + '<td style="padding:8px 10px;text-align:right">' + s.total_in_file + '</td>'
+          + '<td style="padding:8px 10px;text-align:right">' + s.existing_in_db + '</td>'
+          + '<td style="padding:8px 10px">' + badge + sample + '</td>'
+          + '</tr>';
+      }).join('');
+      var totalBadge = data.total_to_add > 0
+        ? '<strong style="color:#856404">' + data.total_to_add + ' products will be inserted</strong>'
+        : '<strong style="color:#4caf50">Database is in sync with all data files &mdash; nothing to insert</strong>';
+      document.getElementById('syncPreview').innerHTML =
+        '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;border:1px solid #e0e0e0">'
+        + '<thead><tr style="background:#f5f5f5">'
+        + '<th style="padding:8px 10px;text-align:left">Brand</th>'
+        + '<th style="padding:8px 10px;text-align:right">In File</th>'
+        + '<th style="padding:8px 10px;text-align:right">In DB</th>'
+        + '<th style="padding:8px 10px;text-align:left">Status</th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table>'
+        + '<div style="text-align:center;margin-top:12px">' + totalBadge + '</div>';
+    }
+
+    async function runProductSync() {
+      if (!syncPreviewData || syncPreviewData.total_to_add === 0) return;
+      if (!confirm('Insert ' + syncPreviewData.total_to_add + ' missing products into the database? Existing products will not be modified.')) return;
+
+      var btn = document.getElementById('syncConfirmBtn');
+      btn.disabled = true;
+      btn.textContent = 'Inserting\u2026';
+
+      var r = await apiPost('/api/admin/products/sync', { dry_run: false });
+      var msg = document.getElementById('syncResultMsg');
+      msg.style.display = 'block';
+      if (r.ok) {
+        msg.style.color = '#2e7d32';
+        msg.textContent = 'Inserted ' + r.data.total_inserted + ' product(s). Refreshing\u2026';
+        renderSyncPreview(r.data);
+        btn.textContent = 'Done';
+        setTimeout(function() {
+          closeModal('syncProductsModal');
+          loadProducts();
+          btn.textContent = 'Insert Missing Products';
+          btn.disabled = false;
+        }, 1200);
+      } else {
+        msg.style.color = '#c62828';
+        msg.textContent = r.data.error || 'Sync failed';
+        btn.textContent = 'Insert Missing Products';
+        btn.disabled = false;
+      }
+    }
+
+    // ═══ AUDIT LOG ═══
+    var auditCurrentPage = 1;
+    var auditPerPage = 50;
+    var auditTotal = 0;
+    var auditActionsPopulated = false;
+
+    async function loadAuditLog(page) {
+      auditCurrentPage = page || 1;
+      var params = [
+        'page=' + auditCurrentPage,
+        'per_page=' + auditPerPage
+      ];
+      var action = document.getElementById('auditActionFilter').value;
+      var entity = document.getElementById('auditEntityFilter').value;
+      var dateFrom = document.getElementById('auditDateFrom').value;
+      var dateTo = document.getElementById('auditDateTo').value;
+      var search = document.getElementById('auditSearch').value;
+      if (action) params.push('action=' + encodeURIComponent(action));
+      if (entity) params.push('entity_type=' + encodeURIComponent(entity));
+      if (dateFrom) params.push('date_from=' + encodeURIComponent(dateFrom));
+      if (dateTo) params.push('date_to=' + encodeURIComponent(dateTo));
+      if (search) params.push('search=' + encodeURIComponent(search));
+
+      var res = await fetch('/api/admin/audit-log?' + params.join('&'));
+      if (!res.ok) {
+        document.getElementById('auditBody').innerHTML = '<tr><td colspan="6" class="empty-text">Failed to load audit log</td></tr>';
+        return;
+      }
+      var data = await res.json();
+      auditTotal = data.total;
+
+      // Populate action filter once
+      if (!auditActionsPopulated && data.actions && data.actions.length) {
+        var sel = document.getElementById('auditActionFilter');
+        var current = sel.value;
+        var opts = '<option value="">All Actions</option>' + data.actions.map(function(a) {
+          return '<option value="' + escapeHtml(a) + '"' + (a === current ? ' selected' : '') + '>' + escapeHtml(a) + '</option>';
+        }).join('');
+        sel.innerHTML = opts;
+        auditActionsPopulated = true;
+      }
+
+      document.getElementById('auditCount').textContent = data.total.toLocaleString() + ' event' + (data.total === 1 ? '' : 's');
+      var pages = Math.max(1, Math.ceil(data.total / auditPerPage));
+      document.getElementById('auditPageLabel').textContent = 'Page ' + auditCurrentPage + ' of ' + pages;
+      document.getElementById('auditPrevBtn').disabled = auditCurrentPage <= 1;
+      document.getElementById('auditNextBtn').disabled = auditCurrentPage >= pages;
+
+      if (!data.rows.length) {
+        document.getElementById('auditBody').innerHTML = '<tr><td colspan="6" class="empty-text">No events found</td></tr>';
+        return;
+      }
+
+      document.getElementById('auditBody').innerHTML = data.rows.map(function(r) {
+        return '<tr>'
+          + '<td style="white-space:nowrap;color:#555;font-size:0.78rem">' + fmtAuditTime(r.created_at) + '</td>'
+          + '<td>' + renderAuditUser(r) + '</td>'
+          + '<td>' + renderAuditAction(r.action) + '</td>'
+          + '<td style="font-size:0.82rem">' + renderAuditEntity(r) + '</td>'
+          + '<td style="font-size:0.78rem;max-width:420px">' + renderAuditDetails(r.details) + '</td>'
+          + '<td style="font-family:monospace;font-size:0.72rem;color:#888">' + escapeHtml(r.ip_address || '') + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+
+    function auditPageChange(delta) {
+      var pages = Math.max(1, Math.ceil(auditTotal / auditPerPage));
+      var next = Math.min(pages, Math.max(1, auditCurrentPage + delta));
+      if (next !== auditCurrentPage) loadAuditLog(next);
+    }
+
+    function fmtAuditTime(iso) {
+      if (!iso) return '';
+      var d = new Date(iso.replace(' ', 'T') + 'Z');
+      if (isNaN(d.getTime())) d = new Date(iso);
+      return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function renderAuditUser(r) {
+      if (!r.user_email && !r.user_id) return '<span style="color:#999">system</span>';
+      var role = r.user_role ? '<span style="background:#eef;color:#1a237e;padding:1px 6px;border-radius:8px;font-size:0.7rem;margin-left:4px">' + escapeHtml(r.user_role) + '</span>' : '';
+      return '<div style="font-size:0.82rem">' + escapeHtml(r.user_email || '#' + r.user_id) + role + '</div>';
+    }
+
+    function renderAuditAction(a) {
+      if (!a) return '';
+      var color = '#607d8b';
+      if (a.indexOf('.delete') >= 0 || a.indexOf('.deactivate') >= 0) color = '#c62828';
+      else if (a.indexOf('.create') >= 0) color = '#2e7d32';
+      else if (a.indexOf('.update') >= 0 || a.indexOf('.edit') >= 0) color = '#1565c0';
+      else if (a.indexOf('auth.login_fail') >= 0) color = '#e65100';
+      else if (a.indexOf('auth.') >= 0) color = '#6a1b9a';
+      else if (a.indexOf('sync') >= 0) color = '#00695c';
+      return '<span style="background:' + color + ';color:white;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-family:monospace;font-weight:600">' + escapeHtml(a) + '</span>';
+    }
+
+    function renderAuditEntity(r) {
+      if (!r.entity_type) return '<span style="color:#999">&mdash;</span>';
+      var id = r.entity_id ? ' <span style="color:#888;font-family:monospace">#' + escapeHtml(r.entity_id) + '</span>' : '';
+      return escapeHtml(r.entity_type) + id;
+    }
+
+    function renderAuditDetails(d) {
+      if (!d) return '<span style="color:#bbb">&mdash;</span>';
+      if (typeof d === 'string') return escapeHtml(d);
+      // Compact inline summary for common shapes
+      try {
+        if (d.changes) {
+          var keys = Object.keys(d.changes);
+          if (!keys.length) return '<span style="color:#bbb">no changes</span>';
+          var s = keys.map(function(k) {
+            var c = d.changes[k];
+            return '<span style="font-family:monospace;background:#f5f5f5;padding:1px 5px;border-radius:3px;margin-right:4px">' + escapeHtml(k) + ': ' + escapeHtml(String(c.from)) + ' \u2192 ' + escapeHtml(String(c.to)) + '</span>';
+          }).join(' ');
+          return s;
+        }
+        if (d.from !== undefined && d.to !== undefined) {
+          return '<span style="font-family:monospace">' + escapeHtml(String(d.from)) + ' \u2192 ' + escapeHtml(String(d.to)) + '</span>'
+            + (d.order_no ? ' <span style="color:#888">(' + escapeHtml(d.order_no) + ')</span>' : '');
+        }
+        if (d.code || d.name) {
+          var bits = [];
+          if (d.brand_id) bits.push('<span style="background:#e3f2fd;padding:1px 5px;border-radius:3px">' + escapeHtml(d.brand_id) + '</span>');
+          if (d.code) bits.push('<span style="font-family:monospace">' + escapeHtml(d.code) + '</span>');
+          if (d.name) bits.push(escapeHtml(d.name));
+          return bits.join(' &middot; ');
+        }
+        if (d.total_to_add !== undefined || d.total_inserted !== undefined) {
+          return 'to_add: <b>' + (d.total_to_add || 0) + '</b>, inserted: <b>' + (d.total_inserted || 0) + '</b>'
+            + (d.dry_run ? ' <span style="color:#888">(preview)</span>' : '');
+        }
+        // Fallback: compact JSON
+        var json = JSON.stringify(d);
+        if (json.length > 180) json = json.slice(0, 177) + '\u2026';
+        return '<span style="font-family:monospace;color:#555">' + escapeHtml(json) + '</span>';
+      } catch (e) {
+        return '<span style="color:#999">[unreadable]</span>';
       }
     }
 
